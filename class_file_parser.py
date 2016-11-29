@@ -3,20 +3,42 @@
 import struct
 
 
+def parse(file_name):
+    class_file = ClassFile()
+    with open(file_name, 'rb') as java_class_file:
+        class_file.parse(java_class_file)
+    return class_file
+
+
 class ClassFile(object):
     '''Class for parse and store a JAVA class file
     '''
-    def __init__(self, fd):
+    def __init__(self):
+        self.__magic = 0
+        self.__minor_version = 0
+        self.__major_version = 0
+        self.__constant_pool_count = 0
+        self.__constant_pool = []
+        self.__access_flags = 0
+        self.__this_class = 0
+        self.__super_class = 0
+        self.__interfaces_count = 0
+        self.__interfaces = []
+        self.__fields_count = 0
+        self.__fields = []
+        self.__methods_count = 0
+        self.__methods = []
+        self.__attributes_count = 0
+        self.__attributes = []
+
+    def parse(self, fd):
         self.__magic = _read_u4_int(fd)
-        print('READ magic:', self.__magic)
-        print('expected magic:', 0xCAFEBABE)
-        assert(self.__magic == 0xCAFEBABE)
+        assert self.__magic == 0xCAFEBABE, 'Magic number ({0}) in class file is wrong'.format(self.__magic)
         self.__minor_version = _read_u2_int(fd)
         self.__major_version = _read_u2_int(fd)
         # The constant_pool table is indexed from 1 to constant_pool_count - 1.
         # Which means the actual count is constant_pool_count - 1
         self.__constant_pool_count = _read_u2_int(fd)
-        self.__constant_pool = []
         long_or_double = False
         for _ in range(self.__constant_pool_count - 1):
             long_or_double = self.__parse_constant_pool(fd, long_or_double)
@@ -26,26 +48,23 @@ class ClassFile(object):
         self.__this_class = _read_u2_int(fd)
         self.__super_class = _read_u2_int(fd)
         self.__interfaces_count = _read_u2_int(fd)
-        self.__interfaces = []
         for _ in range(self.__interfaces_count):
             self.__interfaces.append(_read_u2_int(fd))
         self.__fields_count = _read_u2_int(fd)
-        self.__fields = []
         for _ in range(self.__fields_count):
             field = Field()
             self.__fields.append(field)
         self.__methods_count = _read_u2_int(fd)
-        self.__methods = []
         for _ in range(self.__methods_count):
             method = Method()
             method.parse(fd)
             self.__methods.append(method)
         self.__attributes_count = _read_u2_int(fd)
-        self.__attributes = []
         for _ in range(self.__attributes_count):
             attribute = Attribute()
             attribute.parse(fd)
             self.__attributes.append(attribute)
+        assert len(fd.read(1)) == 0, 'Class file is finish parsed, but still data left in tail.'
 
     def __parse_constant_pool(self, fd, prev_long_or_double):
         '''Parse one constant in constant_pool. Set constant be unusable
@@ -53,41 +72,29 @@ class ClassFile(object):
         '''
         tag = _read_u1_int(fd)
         long_or_double = False
-        constant = None
-        if tag == _GenericConstant.CONSTANT_Class:
-            constant = ConstantClass()
-        elif tag == _GenericConstant.CONSTANT_Fieldref:
-            constant = ConstantFieldref()
-        elif tag == _GenericConstant.CONSTANT_Methodref:
-            constant = ConstantMethodref()
-        elif tag == _GenericConstant.CONSTANT_InterfaceMethodref:
-            constant = ConstantInterfaceMethodref()
-        elif tag == _GenericConstant.CONSTANT_String:
-            constant = ConstantString()
-        elif tag == _GenericConstant.CONSTANT_Integer:
-            constant = ConstantInteger()
-        elif tag == _GenericConstant.CONSTANT_Float:
-            constant = ConstantFloat()
-        elif tag == _GenericConstant.CONSTANT_Long:
-            constant = ConstantLong()
-            long_or_double = True
-        elif tag == _GenericConstant.CONSTANT_Double:
-            constant = ConstantDouble()
-            long_or_double = True
-        elif tag == _GenericConstant.CONSTANT_NameAndType:
-            constant = ConstantNameAndType()
-        elif tag == _GenericConstant.CONSTANT_Utf8:
-            constant = ConstantUtf8()
-        elif tag == _GenericConstant.CONSTANT_MethodHandle:
-            constant = ConstantMethodHandle()
-        elif tag == _GenericConstant.CONSTANT_MethodType:
-            constant = ConstantMethodType()
-        elif tag == _GenericConstant.CONSTANT_InvokeDynamic:
-            constant = ConstantInvokeDynamic()
-        if not constant:
+        constant_type = {
+            _GenericConstant.CONSTANT_Class: ConstantClass,
+            _GenericConstant.CONSTANT_Fieldref: ConstantFieldref,
+            _GenericConstant.CONSTANT_Methodref: ConstantMethodref,
+            _GenericConstant.CONSTANT_InterfaceMethodref: ConstantInterfaceMethodref,
+            _GenericConstant.CONSTANT_String: ConstantString,
+            _GenericConstant.CONSTANT_Integer: ConstantInteger,
+            _GenericConstant.CONSTANT_Float: ConstantFloat,
+            _GenericConstant.CONSTANT_Long: ConstantLong,
+            _GenericConstant.CONSTANT_Double: ConstantDouble,
+            _GenericConstant.CONSTANT_NameAndType: ConstantNameAndType,
+            _GenericConstant.CONSTANT_Utf8: ConstantUtf8,
+            _GenericConstant.CONSTANT_MethodHandle: ConstantMethodHandle,
+            _GenericConstant.CONSTANT_MethodType: ConstantMethodType,
+            _GenericConstant.CONSTANT_InvokeDynamic: ConstantInvokeDynamic
+        }.get(tag, _GenericConstant)
+        if _GenericConstant == constant_type:
             raise NotImplementedError(
-                'Constant tag {0} is not implemented in parse.'.format(constant)
+                'Constant tag {0} is not implemented in parse.'.format(tag)
             )
+        elif ConstantLong == constant_type or ConstantDouble == constant_type:
+            long_or_double = True
+        constant = constant_type()
         constant.parse(fd)
         if prev_long_or_double:
             constant.unuse()
@@ -120,6 +127,8 @@ class ClassFile(object):
         for method in self.__methods:
             method.debug_info()
         print('Attributes count:', self.__attributes_count)
+        for attr in self.__attributes:
+            attr.debug_info()
 
 
 def _read_ux_int(fd, x):
@@ -129,11 +138,11 @@ def _read_ux_int(fd, x):
 def _read_u1_int(fd):
     return _read_ux_int(fd, 1)
 
-    
+
 def _read_u2_int(fd):
     return _read_ux_int(fd, 2)
 
-    
+
 def _read_u4_int(fd):
     return _read_ux_int(fd, 4)
 
@@ -153,7 +162,7 @@ def _read_u8_float(fd):
 def _read_string(fd, length):
     return fd.read(length).decode()
 
-    
+
 class _GenericConstant(object):
     '''Base type for elements in constant_pool
     '''
@@ -168,9 +177,9 @@ class _GenericConstant(object):
     CONSTANT_Double    = 6
     CONSTANT_NameAndType        = 12
     CONSTANT_Utf8      = 1
-    CONSTANT_MethodHandle = 15
-    CONSTANT_MethodType = 16
-    CONSTANT_InvokeDynamic = 18
+    CONSTANT_MethodHandle       = 15
+    CONSTANT_MethodType         = 16
+    CONSTANT_InvokeDynamic      = 18
 
     def __init__(self, tag):
         self.__tag = tag
@@ -408,7 +417,8 @@ class ConstantUtf8(_GenericConstant):
 
 
 class ConstantMethodHandle(_GenericConstant):
-    '''The CONSTANT_MethodHandle_info structure is used to represent a method handle
+    '''The CONSTANT_MethodHandle_info structure is used to represent
+    a method handle
     '''
     def __init__(self):
         super(ConstantMethodHandle, self).__init__(self.CONSTANT_MethodHandle)
@@ -430,7 +440,8 @@ class ConstantMethodHandle(_GenericConstant):
 
 
 class ConstantMethodType(_GenericConstant):
-    '''The CONSTANT_MethodType_info structure is used to represent a method type
+    '''The CONSTANT_MethodType_info structure is used to represent
+    a method type
     '''
     def __init__(self):
         super(ConstantMethodType, self).__init__(self.CONSTANT_MethodType)
@@ -449,7 +460,8 @@ class ConstantMethodType(_GenericConstant):
 
 
 class ConstantInvokeDynamic(_GenericConstant):
-    '''The CONSTANT_InvokeDynamic_info structure is used by an invokedynamic instruction
+    '''The CONSTANT_InvokeDynamic_info structure is used by an
+    invokedynamic instruction
     to specify a bootstrap method
     '''
     def __init__(self):
@@ -572,6 +584,14 @@ class Field(object):
             attribute.parse(fd)
             self.__attributes.append(attribute)
 
+    def debug_info(self):
+        print('Field  - name index:', self.__name_index)
+        print('       - descriptor index:', self.__descriptor_index)
+        self.__access_flags.debug_info('       - ')
+        print('       - attributes count:', self.__attributes_count)
+        for attr in self.__attributes:
+            attr.debug_info('       - ')
+
 
 class Method(object):
     def __init__(self):
@@ -630,6 +650,8 @@ class Method(object):
         print('       - descriptor index:', self.__descriptor_index)
         self.__access_flags.debug_info('       - ')
         print('       - attributes count:', self.__attributes_count)
+        for attr in self.__attributes:
+            attr.debug_info('       - ')
 
 
 class Attribute(object):
@@ -640,3 +662,7 @@ class Attribute(object):
         self.__attribute_name_index = _read_u2_int(fd)
         self.__attribute_length = _read_u4_int(fd)
         self.__info = fd.read(self.__attribute_length)  # Let's do it latter
+
+    def debug_info(self, prefix=''):
+        print(prefix + 'Attribute name index:', self.__attribute_name_index)
+        print(prefix + 'Attribute length:', self.__attribute_length)
