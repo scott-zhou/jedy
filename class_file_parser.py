@@ -41,7 +41,9 @@ class ClassFile(object):
         self.__constant_pool_count = _read_u2_int(fd)
         long_or_double = False
         for _ in range(self.__constant_pool_count - 1):
-            long_or_double = self.__parse_constant_pool(fd, long_or_double)
+            constant = GenericConstant.parse(fd, long_or_double)
+            long_or_double = type(constant) in (ConstantLong, ConstantDouble)
+            self.__constant_pool.append(constant)
         self.__validate_constant_pool()
         self.__access_flags = AccessFlags()
         self.__access_flags.parse(fd)
@@ -53,53 +55,18 @@ class ClassFile(object):
         self.__fields_count = _read_u2_int(fd)
         for _ in range(self.__fields_count):
             field = Field()
+            field.parse(fd, self)
             self.__fields.append(field)
         self.__methods_count = _read_u2_int(fd)
         for _ in range(self.__methods_count):
             method = Method()
-            method.parse(fd)
+            method.parse(fd, self)
             self.__methods.append(method)
         self.__attributes_count = _read_u2_int(fd)
         for _ in range(self.__attributes_count):
-            attribute = Attribute()
-            attribute.parse(fd)
+            attribute = Attribute.parse(fd, self)
             self.__attributes.append(attribute)
         assert len(fd.read(1)) == 0, 'Class file is finish parsed, but still data left in tail.'
-
-    def __parse_constant_pool(self, fd, prev_long_or_double):
-        '''Parse one constant in constant_pool. Set constant be unusable
-        if previous constant is long or double.
-        '''
-        tag = _read_u1_int(fd)
-        long_or_double = False
-        constant_type = {
-            _GenericConstant.CONSTANT_Class: ConstantClass,
-            _GenericConstant.CONSTANT_Fieldref: ConstantFieldref,
-            _GenericConstant.CONSTANT_Methodref: ConstantMethodref,
-            _GenericConstant.CONSTANT_InterfaceMethodref: ConstantInterfaceMethodref,
-            _GenericConstant.CONSTANT_String: ConstantString,
-            _GenericConstant.CONSTANT_Integer: ConstantInteger,
-            _GenericConstant.CONSTANT_Float: ConstantFloat,
-            _GenericConstant.CONSTANT_Long: ConstantLong,
-            _GenericConstant.CONSTANT_Double: ConstantDouble,
-            _GenericConstant.CONSTANT_NameAndType: ConstantNameAndType,
-            _GenericConstant.CONSTANT_Utf8: ConstantUtf8,
-            _GenericConstant.CONSTANT_MethodHandle: ConstantMethodHandle,
-            _GenericConstant.CONSTANT_MethodType: ConstantMethodType,
-            _GenericConstant.CONSTANT_InvokeDynamic: ConstantInvokeDynamic
-        }.get(tag, _GenericConstant)
-        if _GenericConstant == constant_type:
-            raise NotImplementedError(
-                'Constant tag {0} is not implemented in parse.'.format(tag)
-            )
-        elif ConstantLong == constant_type or ConstantDouble == constant_type:
-            long_or_double = True
-        constant = constant_type()
-        constant.parse(fd)
-        if prev_long_or_double:
-            constant.unuse()
-        self.__constant_pool.append(constant)
-        return long_or_double
 
     def __validate_constant_pool(self):
         '''Valid if constant_pool according to spec
@@ -107,6 +74,13 @@ class ClassFile(object):
         '''
         # Well, trust it now.
         pass
+
+    def constant(self, index):
+        '''Return constant in constant_pool on given index
+        index valid from 1 to constant_pool_count - 1
+        '''
+        assert index >= 1 and index < self.__constant_pool_count, 'Invalid constant index {0}'.format(index)
+        return self.__constant_pool[index - 1]
 
     def debug_info(self):
         print('Print class file info')
@@ -163,7 +137,7 @@ def _read_string(fd, length):
     return fd.read(length).decode()
 
 
-class _GenericConstant(object):
+class GenericConstant(object):
     '''Base type for elements in constant_pool
     '''
     CONSTANT_Class     = 7
@@ -185,12 +159,37 @@ class _GenericConstant(object):
         self.__tag = tag
         self.__usable = True
 
-    def parse(self, fd):
-        '''To be implement in children class
+    @staticmethod
+    def parse(fd, prev_long_or_double):
+        '''Parse one constant in constant_pool. Set constant be unusable
+        if previous constant is long or double.
         '''
-        raise NotImplementedError(
-            'parse in _GenericConstant is not implemented.'
-        )
+        tag = _read_u1_int(fd)
+        constant_type = {
+            GenericConstant.CONSTANT_Class: ConstantClass,
+            GenericConstant.CONSTANT_Fieldref: ConstantFieldref,
+            GenericConstant.CONSTANT_Methodref: ConstantMethodref,
+            GenericConstant.CONSTANT_InterfaceMethodref: ConstantInterfaceMethodref,
+            GenericConstant.CONSTANT_String: ConstantString,
+            GenericConstant.CONSTANT_Integer: ConstantInteger,
+            GenericConstant.CONSTANT_Float: ConstantFloat,
+            GenericConstant.CONSTANT_Long: ConstantLong,
+            GenericConstant.CONSTANT_Double: ConstantDouble,
+            GenericConstant.CONSTANT_NameAndType: ConstantNameAndType,
+            GenericConstant.CONSTANT_Utf8: ConstantUtf8,
+            GenericConstant.CONSTANT_MethodHandle: ConstantMethodHandle,
+            GenericConstant.CONSTANT_MethodType: ConstantMethodType,
+            GenericConstant.CONSTANT_InvokeDynamic: ConstantInvokeDynamic
+        }.get(tag, None)
+        if not constant_type:
+            raise ValueError(
+                'Constant tag {0} is not valid.'.format(tag)
+            )
+        constant = constant_type()
+        constant.parse(fd)
+        if prev_long_or_double:
+            constant.unuse()
+        return constant
 
     def unuse(self):
         self.__usable = False
@@ -199,7 +198,7 @@ class _GenericConstant(object):
         pass
 
 
-class ConstantClass(_GenericConstant):
+class ConstantClass(GenericConstant):
     '''The CONSTANT_Class_info structure in constant_pool,
     used to represent a class or an interface.
     '''
@@ -215,7 +214,7 @@ class ConstantClass(_GenericConstant):
         print(prefix, 'CONSTANT_Class_info - name_index:', self.__name_index)
 
 
-class ConstantFieldref(_GenericConstant):
+class ConstantFieldref(GenericConstant):
     '''The CONSTANT_Fieldref_info structure in constant_pool
     '''
     def __init__(self):
@@ -237,7 +236,7 @@ class ConstantFieldref(_GenericConstant):
         )
 
 
-class ConstantMethodref(_GenericConstant):
+class ConstantMethodref(GenericConstant):
     '''The ConstantMethodref structure in constant_pool
     '''
     def __init__(self):
@@ -259,7 +258,7 @@ class ConstantMethodref(_GenericConstant):
         )
 
 
-class ConstantInterfaceMethodref(_GenericConstant):
+class ConstantInterfaceMethodref(GenericConstant):
     '''The CONSTANT_Fieldref_info structure in constant_pool
     '''
     def __init__(self):
@@ -283,7 +282,7 @@ class ConstantInterfaceMethodref(_GenericConstant):
         )
 
 
-class ConstantString(_GenericConstant):
+class ConstantString(GenericConstant):
     '''The CONSTANT_String_info Structure in constant_pool,
     used to represent constant objects of the type String
     '''
@@ -303,7 +302,7 @@ class ConstantString(_GenericConstant):
         )
 
 
-class ConstantInteger(_GenericConstant):
+class ConstantInteger(GenericConstant):
     '''The CONSTANT_Integer_info Structure in constant_pool.
     '''
     def __init__(self):
@@ -321,7 +320,7 @@ class ConstantInteger(_GenericConstant):
         )
 
 
-class ConstantFloat(_GenericConstant):
+class ConstantFloat(GenericConstant):
     '''The CONSTANT_Float_info Structures in constant_pool.
     '''
     def __init__(self):
@@ -339,7 +338,7 @@ class ConstantFloat(_GenericConstant):
         )
 
 
-class ConstantLong(_GenericConstant):
+class ConstantLong(GenericConstant):
     '''The CONSTANT_Long_info represent 8-byte numeric long constants
     In python, use integer for long long C type
     '''
@@ -357,7 +356,7 @@ class ConstantLong(_GenericConstant):
         )
 
 
-class ConstantDouble(_GenericConstant):
+class ConstantDouble(GenericConstant):
     '''The CONSTANT_Double_info represent 8-byte numeric double constants
     In python, use float for double C type
     '''
@@ -375,7 +374,7 @@ class ConstantDouble(_GenericConstant):
         )
 
 
-class ConstantNameAndType(_GenericConstant):
+class ConstantNameAndType(GenericConstant):
     '''The CONSTANT_NameAndType_info structure is used to represent a field
     or method, without indicating which class or interface type it belongs to.
     '''
@@ -398,7 +397,7 @@ class ConstantNameAndType(_GenericConstant):
         )
 
 
-class ConstantUtf8(_GenericConstant):
+class ConstantUtf8(GenericConstant):
     '''The CONSTANT_Utf8_info structure is used to represent constant string values
     '''
     def __init__(self):
@@ -408,6 +407,9 @@ class ConstantUtf8(_GenericConstant):
         length = _read_u2_int(fd)
         self.__str_value = _read_string(fd, length)
 
+    def value(self):
+        return self.__str_value
+
     def debug_info(self, prefix):
         print(
             prefix,
@@ -416,7 +418,7 @@ class ConstantUtf8(_GenericConstant):
         )
 
 
-class ConstantMethodHandle(_GenericConstant):
+class ConstantMethodHandle(GenericConstant):
     '''The CONSTANT_MethodHandle_info structure is used to represent
     a method handle
     '''
@@ -439,7 +441,7 @@ class ConstantMethodHandle(_GenericConstant):
         )
 
 
-class ConstantMethodType(_GenericConstant):
+class ConstantMethodType(GenericConstant):
     '''The CONSTANT_MethodType_info structure is used to represent
     a method type
     '''
@@ -459,7 +461,7 @@ class ConstantMethodType(_GenericConstant):
         )
 
 
-class ConstantInvokeDynamic(_GenericConstant):
+class ConstantInvokeDynamic(GenericConstant):
     '''The CONSTANT_InvokeDynamic_info structure is used by an
     invokedynamic instruction
     to specify a bootstrap method
@@ -572,7 +574,7 @@ class Field(object):
             print(prefix + 'access_flags - ACC_SYNTHETIC:', self.synthetic())
             print(prefix + 'access_flags - ACC_ENUM:', self.enum())
 
-    def parse(self, fd):
+    def parse(self, fd, class_file):
         self.__access_flags = Field.AccessFlags()
         self.__access_flags.parse(fd)
         self.__name_index = _read_u2_int(fd)
@@ -580,8 +582,7 @@ class Field(object):
         self.__attributes_count = _read_u2_int(fd)
         self.__attributes = []
         for _ in range(self.__attributes_count):
-            attribute = Attribute()
-            attribute.parse(fd)
+            attribute = Attribute.parse(fd, class_file)
             self.__attributes.append(attribute)
 
     def debug_info(self):
@@ -633,7 +634,7 @@ class Method(object):
             print(prefix + 'access_flags - ACC_STRICT:', self.strict())
             print(prefix + 'access_flags - ACC_SYNTHETIC:', self.synthetic())
 
-    def parse(self, fd):
+    def parse(self, fd, class_file):
         self.__access_flags = Method.AccessFlags()
         self.__access_flags.parse(fd)
         self.__name_index = _read_u2_int(fd)
@@ -641,8 +642,7 @@ class Method(object):
         self.__attributes_count = _read_u2_int(fd)
         self.__attributes = []
         for _ in range(self.__attributes_count):
-            attribute = Attribute()
-            attribute.parse(fd)
+            attribute = Attribute.parse(fd, class_file)
             self.__attributes.append(attribute)
 
     def debug_info(self):
@@ -655,14 +655,56 @@ class Method(object):
 
 
 class Attribute(object):
-    def __init__(self):
-        pass
+    def __init__(self, name, length):
+        self._name = name
+        self._length = length
 
-    def parse(self, fd):
-        self.__attribute_name_index = _read_u2_int(fd)
-        self.__attribute_length = _read_u4_int(fd)
-        self.__info = fd.read(self.__attribute_length)  # Let's do it latter
+    @staticmethod
+    def parse(fd, class_file):
+        name_index = _read_u2_int(fd)
+        length = _read_u4_int(fd)
+        name_constant = class_file.constant(name_index)
+        assert type(name_constant) == ConstantUtf8, 'Attribute name constant is not CONSTANT_Utf8_info.'
+        attribute_type = {
+            'ConstantValue': ConstantValueAttribute,
+            'Code': CodeAttribute,
+            'StackMapTable': StackMapTableAttribute,
+            'Exceptions': ExceptionsAttribute,
+            'BootstrapMethods': BootstrapMethodsAttribute
+        }.get(name_constant.value(), Attribute)
+        attr = attribute_type(name_constant.value(), length)
+        attr.parse_info(fd, class_file)
+        return attr
+
+    def parse_info(self, fd, class_file):
+        self.__info = fd.read(self._length)
 
     def debug_info(self, prefix=''):
-        print(prefix + 'Attribute name index:', self.__attribute_name_index)
-        print(prefix + 'Attribute length:', self.__attribute_length)
+        print(prefix + 'Attribute name:', self._name)
+        print(prefix + 'Attribute length:', self._length)
+
+
+'''Five critical attributes to correct interpretation of the class file'''
+
+
+class ConstantValueAttribute(Attribute):
+    pass
+
+
+class CodeAttribute(Attribute):
+    pass
+    # def parse_info(self, fd, class_file):
+    #     self.__max_stack = _read_u2_int(fd)
+    #     self.
+
+
+class StackMapTableAttribute(Attribute):
+    pass
+
+
+class ExceptionsAttribute(Attribute):
+    pass
+
+
+class BootstrapMethodsAttribute(Attribute):
+    pass
