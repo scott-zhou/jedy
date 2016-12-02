@@ -1,5 +1,6 @@
 '''Parse JVM class file, according JAVA SE 8 spec
 '''
+import logging
 import struct
 
 
@@ -83,24 +84,24 @@ class ClassFile(object):
         return self.__constant_pool[index - 1]
 
     def debug_info(self):
-        print('Print class file info')
-        print('Magic number: 0x{:X}'.format(self.__magic))
-        print('Major version:', self.__major_version)
-        print('Monor version:', self.__minor_version)
-        print('Constant count:', self.__constant_pool_count)
+        logging.debug('Class file info')
+        logging.debug('Magic number: 0x{:X}'.format(self.__magic))
+        logging.debug('Major version:' + str(self.__major_version))
+        logging.debug('Minor version:' + str(self.__minor_version))
+        logging.debug('Constant count:' + str(self.__constant_pool_count))
         for index in range(self.__constant_pool_count - 1):
             self.__constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index + 1))
         self.__access_flags.debug_info()
-        print('This class index:', self.__this_class)
-        print('Super class index:', self.__super_class)
-        print('Interface count:', self.__interfaces_count)
+        logging.debug('This class index:' + str(self.__this_class))
+        logging.debug('Super class index:' + str(self.__super_class))
+        logging.debug('Interface count:' + str(self.__interfaces_count))
         for interface in self.__interfaces:
-            print('\tinterface index in constant_pool:', interface)
-        print('Fields count:', self.__fields_count)
-        print('Methods count:', self.__methods_count)
+            logging.debug('\tinterface index in constant_pool:' + str(interface))
+        logging.debug('Fields count:' + str(self.__fields_count))
+        logging.debug('Methods count:' + str(self.__methods_count))
         for method in self.__methods:
             method.debug_info()
-        print('Attributes count:', self.__attributes_count)
+        logging.debug('Attributes count:' + str(self.__attributes_count))
         for attr in self.__attributes:
             attr.debug_info()
 
@@ -211,7 +212,7 @@ class ConstantClass(GenericConstant):
         # In spec 4.4.1. The CONSTANT_Class_info Structure
 
     def debug_info(self, prefix):
-        print(prefix, 'CONSTANT_Class_info - name_index:', self.__name_index)
+        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.__name_index))
 
 
 class ConstantFieldref(GenericConstant):
@@ -227,12 +228,12 @@ class ConstantFieldref(GenericConstant):
         # In spec 4.4.2
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Fieldref_info - class_index:',
-            self.__class_index,
-            '; name_and_type_index:',
-            self.__name_and_type_index
+        logging.debug(
+            prefix +
+            'CONSTANT_Fieldref_info - class_index:' +
+            str(self.__class_index) +
+            '; name_and_type_index:' +
+            str(self.__name_and_type_index)
         )
 
 
@@ -249,12 +250,12 @@ class ConstantMethodref(GenericConstant):
         # In spec 4.4.2
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'ConstantMethodref - class_index:',
-            self.__class_index,
-            '; name_and_type_index:',
-            self.__name_and_type_index
+        logging.debug(
+            prefix +
+            'ConstantMethodref - class_index:' +
+            str(self.__class_index) +
+            '; name_and_type_index:' +
+            str(self.__name_and_type_index)
         )
 
 
@@ -273,12 +274,12 @@ class ConstantInterfaceMethodref(GenericConstant):
         # In spec 4.4.2
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'ConstantInterfaceMethodref - class_index:',
-            self.__class_index,
-            '; name_and_type_index:',
-            self.__name_and_type_index
+        logging.debug(
+            prefix +
+            'ConstantInterfaceMethodref - class_index:' +
+            str(self.__class_index) +
+            '; name_and_type_index:' +
+            str(self.__name_and_type_index)
         )
 
 
@@ -295,10 +296,10 @@ class ConstantString(GenericConstant):
         # In spec 4.4.3
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_String_info - string_index:',
-            self.__string_index
+        logging.debug(
+            prefix +
+            'CONSTANT_String_info - string_index:' +
+            str(self.__string_index)
         )
 
 
@@ -313,10 +314,10 @@ class ConstantInteger(GenericConstant):
         # In spec it's bytes, use veriable name __value.
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Integer_info - value:',
-            self.__value
+        logging.debug(
+            prefix +
+            'CONSTANT_Integer_info - value:' +
+            str(self.__value)
         )
 
 
@@ -331,10 +332,10 @@ class ConstantFloat(GenericConstant):
         # In spec it's bytes, use veriable name __value.
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Float_info - value:',
-            self.__value
+        logging.debug(
+            prefix +
+            'CONSTANT_Float_info - value:' +
+            str(self.__value)
         )
 
 
@@ -349,10 +350,10 @@ class ConstantLong(GenericConstant):
         self.__value = _read_u8_int(fd)
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Long_info - value:',
-            self.__value
+        logging.debug(
+            prefix +
+            'CONSTANT_Long_info - value:' +
+            str(self.__value)
         )
 
 
@@ -367,10 +368,10 @@ class ConstantDouble(GenericConstant):
         self.__value = _read_u8_float(fd)
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Double_info - value:',
-            self.__value
+        logging.debug(
+            prefix +
+            'CONSTANT_Double_info - value:' +
+            str(self.__value)
         )
 
 
@@ -388,12 +389,12 @@ class ConstantNameAndType(GenericConstant):
         # In spec 4.4.6
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_NameAndType_info - name_index:',
-            self.__name_index,
-            '; descriptor_index:',
-            self.__descriptor_index
+        logging.debug(
+            prefix +
+            'CONSTANT_NameAndType_info - name_index:' +
+            str(self.__name_index) +
+            '; descriptor_index:' +
+            str(self.__descriptor_index)
         )
 
 
@@ -411,10 +412,10 @@ class ConstantUtf8(GenericConstant):
         return self.__str_value
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_Utf8_info - string value:',
-            self.__str_value
+        logging.debug(
+            prefix +
+            'CONSTANT_Utf8_info - string value:' +
+            str(self.__str_value)
         )
 
 
@@ -432,12 +433,12 @@ class ConstantMethodHandle(GenericConstant):
         # In spec 4.6.8
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_MethodHandle_info - reference_kind:',
-            self.__reference_kind,
-            '; reference_index:',
-            self.__reference_index
+        logging.debug(
+            prefix +
+            'CONSTANT_MethodHandle_info - reference_kind:' +
+            str(self.__reference_kind) +
+            '; reference_index:' +
+            str(self.__reference_index)
         )
 
 
@@ -454,10 +455,10 @@ class ConstantMethodType(GenericConstant):
         # In spec 4.6.9
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_MethodType_info - descriptor_index:',
-            self.__descriptor_index
+        logging.debug(
+            prefix +
+            'CONSTANT_MethodType_info - descriptor_index:' +
+            str(self.__descriptor_index)
         )
 
 
@@ -476,12 +477,12 @@ class ConstantInvokeDynamic(GenericConstant):
         # In spec 4.6.10
 
     def debug_info(self, prefix):
-        print(
-            prefix,
-            'CONSTANT_InvokeDynamic_info - bootstrap_method_attr_index:',
-            self.__bootstrap_method_attr_index,
-            '; name_and_type_index:',
-            self.__name_and_type_index
+        logging.debug(
+            prefix +
+            'CONSTANT_InvokeDynamic_info - bootstrap_method_attr_index:' +
+            str(self.__bootstrap_method_attr_index) +
+            '; name_and_type_index:' +
+            str(self.__name_and_type_index)
         )
 
 
@@ -536,14 +537,14 @@ class AccessFlags(_GenericAccessFlags):
         return (self._flags & 0x2000 > 0)
 
     def debug_info(self):
-        print('access_flags - ACC_PUBLIC:', self.public())
-        print('access_flags - ACC_FINAL:', self.final())
-        print('access_flags - ACC_SUPER:', self.super())
-        print('access_flags - ACC_INTERFACE:', self.interface())
-        print('access_flags - ACC_ABSTRACT:', self.abstract())
-        print('access_flags - ACC_SYNTHETIC:', self.synthetic())
-        print('access_flags - ACC_ANNOTATION:', self.annotation())
-        print('access_flags - ACC_ENUM:', self.enum())
+        logging.debug('access_flags - ACC_PUBLIC:' + str(self.public()))
+        logging.debug('access_flags - ACC_FINAL:' + str(self.final()))
+        logging.debug('access_flags - ACC_SUPER:' + str(self.super()))
+        logging.debug('access_flags - ACC_INTERFACE:' + str(self.interface()))
+        logging.debug('access_flags - ACC_ABSTRACT:' + str(self.abstract()))
+        logging.debug('access_flags - ACC_SYNTHETIC:' + str(self.synthetic()))
+        logging.debug('access_flags - ACC_ANNOTATION:' + str(self.annotation()))
+        logging.debug('access_flags - ACC_ENUM:' + str(self.enum()))
 
 
 class Field(object):
@@ -564,15 +565,15 @@ class Field(object):
             return (self._flags & 0x0080 > 0)
 
         def debug_info(self, prefix):
-            print(prefix + 'access_flags - ACC_PUBLIC:', self.public())
-            print(prefix + 'access_flags - ACC_PRIVATE:', self.public())
-            print(prefix + 'access_flags - ACC_PROTECTED:', self.public())
-            print(prefix + 'access_flags - ACC_STATIC:', self.public())
-            print(prefix + 'access_flags - ACC_FINAL:', self.final())
-            print(prefix + 'access_flags - ACC_VOLATILE:', self.volatile())
-            print(prefix + 'access_flags - ACC_TRANSIENT:', self.transient())
-            print(prefix + 'access_flags - ACC_SYNTHETIC:', self.synthetic())
-            print(prefix + 'access_flags - ACC_ENUM:', self.enum())
+            logging.debug(prefix + 'access_flags - ACC_PUBLIC:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_PRIVATE:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_PROTECTED:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_STATIC:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_FINAL:' + str(self.final()))
+            logging.debug(prefix + 'access_flags - ACC_VOLATILE:' + str(self.volatile()))
+            logging.debug(prefix + 'access_flags - ACC_TRANSIENT:' + str(self.transient()))
+            logging.debug(prefix + 'access_flags - ACC_SYNTHETIC:' + str(self.synthetic()))
+            logging.debug(prefix + 'access_flags - ACC_ENUM:' + str(self.enum()))
 
     def parse(self, fd, class_file):
         self.__access_flags = Field.AccessFlags()
@@ -586,10 +587,10 @@ class Field(object):
             self.__attributes.append(attribute)
 
     def debug_info(self):
-        print('Field  - name index:', self.__name_index)
-        print('       - descriptor index:', self.__descriptor_index)
+        logging.debug('Field  - name index:' + str(self.__name_index))
+        logging.debug('       - descriptor index:' + str(self.__descriptor_index))
         self.__access_flags.debug_info('       - ')
-        print('       - attributes count:', self.__attributes_count)
+        logging.debug('       - attributes count:' + str(self.__attributes_count))
         for attr in self.__attributes:
             attr.debug_info('       - ')
 
@@ -621,18 +622,18 @@ class Method(object):
             return (self._flags & 0x0800 > 0)
 
         def debug_info(self, prefix):
-            print(prefix + 'access_flags - ACC_PUBLIC:', self.public())
-            print(prefix + 'access_flags - ACC_PRIVATE:', self.public())
-            print(prefix + 'access_flags - ACC_PROTECTED:', self.public())
-            print(prefix + 'access_flags - ACC_STATIC:', self.public())
-            print(prefix + 'access_flags - ACC_FINAL:', self.final())
-            print(prefix + 'access_flags - ACC_SYNCHRONIZED:', self.synchronized())
-            print(prefix + 'access_flags - ACC_BRIDGE:', self.bridge())
-            print(prefix + 'access_flags - ACC_VARARGS:', self.varargs())
-            print(prefix + 'access_flags - ACC_NATIVE:', self.native())
-            print(prefix + 'access_flags - ACC_ABSTRACT:', self.abstract())
-            print(prefix + 'access_flags - ACC_STRICT:', self.strict())
-            print(prefix + 'access_flags - ACC_SYNTHETIC:', self.synthetic())
+            logging.debug(prefix + 'access_flags - ACC_PUBLIC:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_PRIVATE:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_PROTECTED:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_STATIC:' + str(self.public()))
+            logging.debug(prefix + 'access_flags - ACC_FINAL:' + str(self.final()))
+            logging.debug(prefix + 'access_flags - ACC_SYNCHRONIZED:' + str(self.synchronized()))
+            logging.debug(prefix + 'access_flags - ACC_BRIDGE:' + str(self.bridge()))
+            logging.debug(prefix + 'access_flags - ACC_VARARGS:' + str(self.varargs()))
+            logging.debug(prefix + 'access_flags - ACC_NATIVE:' + str(self.native()))
+            logging.debug(prefix + 'access_flags - ACC_ABSTRACT:' + str(self.abstract()))
+            logging.debug(prefix + 'access_flags - ACC_STRICT:' + str(self.strict()))
+            logging.debug(prefix + 'access_flags - ACC_SYNTHETIC:' + str(self.synthetic()))
 
     def parse(self, fd, class_file):
         self.__access_flags = Method.AccessFlags()
@@ -646,10 +647,10 @@ class Method(object):
             self.__attributes.append(attribute)
 
     def debug_info(self):
-        print('Method - name index:', self.__name_index)
-        print('       - descriptor index:', self.__descriptor_index)
+        logging.debug('Method - name index:' + str(self.__name_index))
+        logging.debug('       - descriptor index:' + str(self.__descriptor_index))
         self.__access_flags.debug_info('       - ')
-        print('       - attributes count:', self.__attributes_count)
+        logging.debug('       - attributes count:' + str(self.__attributes_count))
         for attr in self.__attributes:
             attr.debug_info('       - ')
 
@@ -680,8 +681,8 @@ class Attribute(object):
         self.__info = fd.read(self._length)
 
     def debug_info(self, prefix=''):
-        print(prefix + 'Attribute name:', self._name)
-        print(prefix + 'Attribute length:', self._length)
+        logging.debug(prefix + 'Attribute name:' + str(self._name))
+        logging.debug(prefix + 'Attribute length:' + str(self._length))
 
 
 '''Five critical attributes to correct interpretation of the class file'''
@@ -692,10 +693,29 @@ class ConstantValueAttribute(Attribute):
 
 
 class CodeAttribute(Attribute):
-    pass
-    # def parse_info(self, fd, class_file):
-    #     self.__max_stack = _read_u2_int(fd)
-    #     self.
+    def parse_info(self, fd, class_file):
+        self.__max_stack = _read_u2_int(fd)
+        self.__max_locals = _read_u2_int(fd)
+        self.__code_length = _read_u4_int(fd)
+        self.__code = fd.read(self.__code_length)
+        self.__exception_table_length = _read_u2_int(fd)
+        self.__exception_table = []
+        for _ in range(self.__exception_table_length):
+            start_pc = _read_u2_int(fd)
+            end_pc = _read_u2_int(fd)
+            handler_pc = _read_u2_int(fd)
+            catch_type = _read_u2_int(fd)
+            self.__exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
+        self.__attributes_count = _read_u2_int(fd)
+        self.__attributes = []
+        for _ in range(self.__attributes_count):
+            attribute = Attribute.parse(fd, class_file)
+            self.__attributes.append(attribute)
+
+    def debug_info(self, prefix=''):
+        super().debug_info(prefix)
+        logging.debug(prefix + 'code length:' + str(self.__code_length))
+        logging.debug(prefix + 'attribute count:' + str(self.__attributes_count))
 
 
 class StackMapTableAttribute(Attribute):
