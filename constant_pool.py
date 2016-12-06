@@ -91,6 +91,9 @@ class ConstantClass(GenericConstant):
         # TODO: check index availability after pool parsed
         # In spec 4.4.1. The CONSTANT_Class_info Structure
 
+    def name_index(self):
+        return self.__name_index
+
     def debug_info(self, prefix):
         logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.__name_index))
 

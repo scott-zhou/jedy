@@ -75,6 +75,13 @@ class ClassFile(object):
         assert index >= 1 and index < self.__constant_pool_count, 'Invalid constant index {0}'.format(index)
         return self.__constant_pool[index - 1]
 
+    def name(self):
+        this_class = self.constant(self.__this_class)
+        assert type(this_class) is constant_pool.ConstantClass, 'this_class index in constant_pool is not CONSTANT_Class_info'
+        name_str = self.constant(this_class.name_index())
+        assert type(name_str) is constant_pool.ConstantUtf8, 'name_index in constant_pool is not CONSTANT_Utf8_info'
+        return name_str.value()
+
     def debug_info(self):
         logging.debug('Class file info')
         logging.debug('Magic number: 0x{:X}'.format(self.__magic))

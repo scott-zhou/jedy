@@ -79,6 +79,7 @@ class CodeAttribute(Attribute):
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
         logging.debug(prefix + 'code length:' + str(self.__code_length))
+        logging.debug(prefix + 'code: ' + ' '.join('0x{:02X}'.format(i) for i in self.__code))
         logging.debug(prefix + 'attribute count:' + str(self.__attributes_count))
         for attr in self.__attributes:
             attr.debug_info(prefix + '       - ')

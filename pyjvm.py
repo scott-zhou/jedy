@@ -3,7 +3,9 @@
 import argparse
 import logging
 import sys
-import class_file_parser
+import class_loader
+import run_time_data
+import thread
 
 
 def parse_argument():
@@ -34,5 +36,9 @@ def init_logging(debug):
 if __name__ == "__main__":
     args = parse_argument()
     init_logging(args.debug)
-    class_file = class_file_parser.parse(args.class_file)
+    class_file = class_loader.parse(args.class_file)
     class_file.debug_info()
+    run_time_data.method_area[class_file.name()] = class_file
+    main_thread = thread.Thread()
+    run_time_data.thread_pool.append(main_thread)
+    main_thread.bootstrap(class_file)
