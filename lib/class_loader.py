@@ -1,9 +1,9 @@
 '''Parse JVM class file, according JAVA SE 8 spec
 '''
 import logging
-import read_bytes
-import constant_pool
-import attributes
+from lib import read_bytes
+from lib import constant_pool
+from lib import attributes
 
 
 class ClassStruct(object):

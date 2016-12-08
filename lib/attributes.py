@@ -1,6 +1,6 @@
 import logging
-import read_bytes
-import constant_pool
+from lib import read_bytes
+from lib import constant_pool
 
 
 SAME = 0

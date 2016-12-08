@@ -1,5 +1,5 @@
 import logging
-import read_bytes
+from lib import read_bytes
 
 
 CONSTANT_Class     = 7

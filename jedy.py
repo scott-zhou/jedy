@@ -3,9 +3,9 @@
 import argparse
 import logging
 import sys
-import class_loader
-import run_time_data
-import thread
+from lib import class_loader
+from lib import run_time_data
+from lib import thread
 
 
 def parse_argument():
