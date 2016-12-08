@@ -6,103 +6,124 @@ import constant_pool
 import attributes
 
 
-def parse(file_name):
-    class_file = ClassFile()
-    with open(file_name, 'rb') as java_class_file:
-        class_file.parse(java_class_file)
-    return class_file
-
-
-class ClassFile(object):
-    '''Class for parse and store a JAVA class file
+class ClassStruct(object):
+    '''Store compiled class structures such as the run-time
+    constant pool, field and method data, and the code for
+    methods and constructors, including the special methods
+    used in class and instance initialization and interface
+    initialization.
     '''
     def __init__(self):
-        self.__magic = 0
-        self.__minor_version = 0
-        self.__major_version = 0
-        self.__constant_pool_count = 0
-        self.__constant_pool = []
-        self.__access_flags = 0
-        self.__this_class = 0
-        self.__super_class = 0
-        self.__interfaces_count = 0
-        self.__interfaces = []
-        self.__fields_count = 0
-        self.__fields = []
-        self.__methods_count = 0
-        self.__methods = []
-        self.__attributes_count = 0
-        self.__attributes = []
-
-    def parse(self, fd):
-        self.__magic = read_bytes.read_u4_int(fd)
-        assert self.__magic == 0xCAFEBABE, 'Magic number ({0}) in class file is wrong'.format(self.__magic)
-        self.__minor_version = read_bytes.read_u2_int(fd)
-        self.__major_version = read_bytes.read_u2_int(fd)
-        (self.__constant_pool_count, self.__constant_pool) = constant_pool.parse(fd)
-        self.__validate_constant_pool()
-        self.__access_flags = AccessFlags()
-        self.__access_flags.parse(fd)
-        self.__this_class = read_bytes.read_u2_int(fd)
-        self.__super_class = read_bytes.read_u2_int(fd)
-        self.__interfaces_count = read_bytes.read_u2_int(fd)
-        for _ in range(self.__interfaces_count):
-            self.__interfaces.append(read_bytes.read_u2_int(fd))
-        self.__fields_count = read_bytes.read_u2_int(fd)
-        for _ in range(self.__fields_count):
-            field = Field()
-            field.parse(fd, self)
-            self.__fields.append(field)
-        self.__methods_count = read_bytes.read_u2_int(fd)
-        for _ in range(self.__methods_count):
-            method = Method()
-            method.parse(fd, self)
-            self.__methods.append(method)
-        (self.__attributes_count, self.__attributes) = attributes.parse(fd, self)
-        assert len(fd.read(1)) == 0, 'Class file is finish parsed, but still data left in tail.'
-
-    def __validate_constant_pool(self):
-        '''Valid if constant_pool according to spec
-        Raise ValueError if any fail validation
-        '''
-        # Well, trust it now.
-        pass
+        self.magic = 0
+        self.minor_version = 0
+        self.major_version = 0
+        self.constant_pool_count = 0
+        self.constant_pool = []
+        self.access_flags = 0
+        self.this_class = 0
+        self.super_class = 0
+        self.interfaces_count = 0
+        self.interfaces = []
+        self.fields_count = 0
+        self.fields = []
+        self.methods_count = 0
+        self.methods = []
+        self.attributes_count = 0
+        self.attributes = []
 
     def constant(self, index):
         '''Return constant in constant_pool on given index
         index valid from 1 to constant_pool_count - 1
         '''
-        assert index >= 1 and index < self.__constant_pool_count, 'Invalid constant index {0}'.format(index)
-        return self.__constant_pool[index - 1]
+        assert index >= 1 and index < self.constant_pool_count, 'Invalid constant index {0}'.format(index)
+        return self.constant_pool[index - 1]
 
     def name(self):
-        this_class = self.constant(self.__this_class)
+        this_class = self.constant(self.this_class)
         assert type(this_class) is constant_pool.ConstantClass, 'this_class index in constant_pool is not CONSTANT_Class_info'
         name_str = self.constant(this_class.name_index())
         assert type(name_str) is constant_pool.ConstantUtf8, 'name_index in constant_pool is not CONSTANT_Utf8_info'
         return name_str.value()
 
+    def validate(self):
+        '''Valid if class struct according to spec
+        Raise ValueError if any fail validation
+        '''
+        # Well, trust it now.
+        pass
+
     def debug_info(self):
         logging.debug('Class file info')
-        logging.debug('Magic number: 0x{:X}'.format(self.__magic))
-        logging.debug('Major version:' + str(self.__major_version))
-        logging.debug('Minor version:' + str(self.__minor_version))
-        logging.debug('Constant count:' + str(self.__constant_pool_count))
-        for index in range(self.__constant_pool_count - 1):
-            self.__constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index + 1))
-        self.__access_flags.debug_info()
-        logging.debug('This class index:' + str(self.__this_class))
-        logging.debug('Super class index:' + str(self.__super_class))
-        logging.debug('Interface count:' + str(self.__interfaces_count))
-        for interface in self.__interfaces:
+        logging.debug('Magic number: 0x{:X}'.format(self.magic))
+        logging.debug('Major version:' + str(self.major_version))
+        logging.debug('Minor version:' + str(self.minor_version))
+        logging.debug('Constant count:' + str(self.constant_pool_count))
+        for index in range(self.constant_pool_count - 1):
+            self.constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index + 1))
+        self.access_flags.debug_info()
+        logging.debug('This class index:' + str(self.this_class))
+        logging.debug('Super class index:' + str(self.super_class))
+        logging.debug('Interface count:' + str(self.interfaces_count))
+        for interface in self.interfaces:
             logging.debug('\tinterface index in constant_pool:' + str(interface))
-        logging.debug('Fields count:' + str(self.__fields_count))
-        logging.debug('Methods count:' + str(self.__methods_count))
-        for method in self.__methods:
+        logging.debug('Fields count:' + str(self.fields_count))
+        logging.debug('Methods count:' + str(self.methods_count))
+        for method in self.methods:
             method.debug_info()
-        logging.debug('Attributes count:' + str(self.__attributes_count))
-        for attr in self.__attributes:
+        logging.debug('Attributes count:' + str(self.attributes_count))
+        for attr in self.attributes:
             attr.debug_info()
+
+
+class BootstrapClassLoader(object):
+    '''Class for parse and store a JAVA class file
+    '''
+    def __init__(self):
+        self.magic = 0
+        self.minor_version = 0
+        self.major_version = 0
+        self.constant_pool_count = 0
+        self.constant_pool = []
+        self.access_flags = 0
+        self.this_class = 0
+        self.super_class = 0
+        self.interfaces_count = 0
+        self.interfaces = []
+        self.fields_count = 0
+        self.fields = []
+        self.methods_count = 0
+        self.methods = []
+        self.attributes_count = 0
+        self.attributes = []
+
+    def parse(self, fd):
+        class_struct = ClassStruct()
+        class_struct.magic = read_bytes.read_u4_int(fd)
+        assert class_struct.magic == 0xCAFEBABE, 'Magic number ({0}) in class file is wrong'.format(class_struct.magic)
+        class_struct.minor_version = read_bytes.read_u2_int(fd)
+        class_struct.major_version = read_bytes.read_u2_int(fd)
+        (class_struct.constant_pool_count, class_struct.constant_pool) = constant_pool.parse(fd)
+        class_struct.access_flags = AccessFlags()
+        class_struct.access_flags.parse(fd)
+        class_struct.this_class = read_bytes.read_u2_int(fd)
+        class_struct.super_class = read_bytes.read_u2_int(fd)
+        class_struct.interfaces_count = read_bytes.read_u2_int(fd)
+        for _ in range(class_struct.interfaces_count):
+            class_struct.interfaces.append(read_bytes.read_u2_int(fd))
+        class_struct.fields_count = read_bytes.read_u2_int(fd)
+        for _ in range(class_struct.fields_count):
+            field = Field()
+            field.parse(fd, class_struct)
+            class_struct.fields.append(field)
+        class_struct.methods_count = read_bytes.read_u2_int(fd)
+        for _ in range(class_struct.methods_count):
+            method = Method()
+            method.parse(fd, class_struct)
+            class_struct.methods.append(method)
+        (class_struct.attributes_count, class_struct.attributes) = attributes.parse(fd, class_struct)
+        assert len(fd.read(1)) == 0, 'Class file is finish parsed, but still data left in tail.'
+        class_struct.validate()
+        return class_struct
 
 
 class _GenericAccessFlags(object):
@@ -264,3 +285,10 @@ class Method(object):
         logging.debug('       - attributes count:' + str(self.__attributes_count))
         for attr in self.__attributes:
             attr.debug_info('       - ')
+
+
+def parse(file_name, loader=BootstrapClassLoader):
+    class_loader = loader()
+    with open(file_name, 'rb') as java_class_file:
+        class_struct = class_loader.parse(java_class_file)
+    return class_struct

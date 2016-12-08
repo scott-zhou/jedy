@@ -15,7 +15,8 @@ def parse_argument():
         action='store_true',
         help='Output debug informations.'
     )
-    parser.add_argument('class_file', help='Java class file path name')
+    parser.add_argument('--classfile', help='Java class file path name')
+    parser.add_argument('classname', help='Java class name')
     return parser.parse_args()
 
 
@@ -36,9 +37,9 @@ def init_logging(debug):
 if __name__ == "__main__":
     args = parse_argument()
     init_logging(args.debug)
-    class_file = class_loader.parse(args.class_file)
-    class_file.debug_info()
-    run_time_data.method_area[class_file.name()] = class_file
+    class_struct = class_loader.parse(args.classfile)
+    class_struct.debug_info()
+    run_time_data.method_area[class_struct.name()] = class_struct
     main_thread = thread.Thread()
     run_time_data.thread_pool.append(main_thread)
-    main_thread.bootstrap(class_file)
+    main_thread.run(args.classname)
