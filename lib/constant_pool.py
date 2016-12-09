@@ -69,11 +69,11 @@ class GenericConstant(object):
     '''Base type for elements in constant_pool
     '''
     def __init__(self, tag):
-        self.__tag = tag
-        self.__usable = True
+        self.tag = tag
+        self.usable = True
 
     def unuse(self):
-        self.__usable = False
+        self.usable = False
 
     def debug_info(self, prefix):
         pass
@@ -87,15 +87,12 @@ class ConstantClass(GenericConstant):
         super().__init__(CONSTANT_Class)
 
     def parse(self, fd):
-        self.__name_index = read_bytes.read_u2_int(fd)
+        self.name_index = read_bytes.read_u2_int(fd)
         # TODO: check index availability after pool parsed
         # In spec 4.4.1. The CONSTANT_Class_info Structure
 
-    def name_index(self):
-        return self.__name_index
-
     def debug_info(self, prefix):
-        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.__name_index))
+        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.name_index))
 
 
 class ConstantFieldref(GenericConstant):
@@ -105,8 +102,8 @@ class ConstantFieldref(GenericConstant):
         super().__init__(CONSTANT_Fieldref)
 
     def parse(self, fd):
-        self.__class_index = read_bytes.read_u2_int(fd)
-        self.__name_and_type_index = read_bytes.read_u2_int(fd)
+        self.class_index = read_bytes.read_u2_int(fd)
+        self.name_and_type_index = read_bytes.read_u2_int(fd)
         # TODO: validate index may be either a class type or an interface type
         # In spec 4.4.2
 
@@ -114,9 +111,9 @@ class ConstantFieldref(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_Fieldref_info - class_index:' +
-            str(self.__class_index) +
+            str(self.class_index) +
             '; name_and_type_index:' +
-            str(self.__name_and_type_index)
+            str(self.name_and_type_index)
         )
 
 
@@ -127,8 +124,8 @@ class ConstantMethodref(GenericConstant):
         super().__init__(CONSTANT_Methodref)
 
     def parse(self, fd):
-        self.__class_index = read_bytes.read_u2_int(fd)
-        self.__name_and_type_index = read_bytes.read_u2_int(fd)
+        self.class_index = read_bytes.read_u2_int(fd)
+        self.name_and_type_index = read_bytes.read_u2_int(fd)
         # TODO: validate index must be a class type
         # In spec 4.4.2
 
@@ -136,9 +133,9 @@ class ConstantMethodref(GenericConstant):
         logging.debug(
             prefix +
             'ConstantMethodref - class_index:' +
-            str(self.__class_index) +
+            str(self.class_index) +
             '; name_and_type_index:' +
-            str(self.__name_and_type_index)
+            str(self.name_and_type_index)
         )
 
 
@@ -149,8 +146,8 @@ class ConstantInterfaceMethodref(GenericConstant):
         super().__init__(CONSTANT_InterfaceMethodref)
 
     def parse(self, fd):
-        self.__class_index = read_bytes.read_u2_int(fd)
-        self.__name_and_type_index = read_bytes.read_u2_int(fd)
+        self.class_index = read_bytes.read_u2_int(fd)
+        self.name_and_type_index = read_bytes.read_u2_int(fd)
         # TODO: validate index must be an interface type
         # In spec 4.4.2
 
@@ -158,9 +155,9 @@ class ConstantInterfaceMethodref(GenericConstant):
         logging.debug(
             prefix +
             'ConstantInterfaceMethodref - class_index:' +
-            str(self.__class_index) +
+            str(self.class_index) +
             '; name_and_type_index:' +
-            str(self.__name_and_type_index)
+            str(self.name_and_type_index)
         )
 
 
@@ -172,7 +169,7 @@ class ConstantString(GenericConstant):
         super().__init__(CONSTANT_String)
 
     def parse(self, fd):
-        self.__string_index = read_bytes.read_u2_int(fd)
+        self.string_index = read_bytes.read_u2_int(fd)
         # TODO: validate index entry must be a CONSTANT_Utf8_info structure
         # In spec 4.4.3
 
@@ -180,7 +177,7 @@ class ConstantString(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_String_info - string_index:' +
-            str(self.__string_index)
+            str(self.string_index)
         )
 
 
@@ -191,14 +188,14 @@ class ConstantInteger(GenericConstant):
         super().__init__(CONSTANT_Integer)
 
     def parse(self, fd):
-        self.__value = read_bytes.read_u4_int(fd)
+        self.value = read_bytes.read_u4_int(fd)
         # In spec it's bytes, use veriable name __value.
 
     def debug_info(self, prefix):
         logging.debug(
             prefix +
             'CONSTANT_Integer_info - value:' +
-            str(self.__value)
+            str(self.value)
         )
 
 
@@ -209,14 +206,14 @@ class ConstantFloat(GenericConstant):
         super().__init__(CONSTANT_Float)
 
     def parse(self, fd):
-        self.__value = read_bytes.read_u4_float(fd)
+        self.value = read_bytes.read_u4_float(fd)
         # In spec it's bytes, use veriable name __value.
 
     def debug_info(self, prefix):
         logging.debug(
             prefix +
             'CONSTANT_Float_info - value:' +
-            str(self.__value)
+            str(self.value)
         )
 
 
@@ -228,13 +225,13 @@ class ConstantLong(GenericConstant):
         super().__init__(CONSTANT_Long)
 
     def parse(self, fd):
-        self.__value = read_bytes.read_u8_int(fd)
+        self.value = read_bytes.read_u8_int(fd)
 
     def debug_info(self, prefix):
         logging.debug(
             prefix +
             'CONSTANT_Long_info - value:' +
-            str(self.__value)
+            str(self.value)
         )
 
 
@@ -246,13 +243,13 @@ class ConstantDouble(GenericConstant):
         super().__init__(CONSTANT_Double)
 
     def parse(self, fd):
-        self.__value = read_bytes.read_u8_float(fd)
+        self.value = read_bytes.read_u8_float(fd)
 
     def debug_info(self, prefix):
         logging.debug(
             prefix +
             'CONSTANT_Double_info - value:' +
-            str(self.__value)
+            str(self.value)
         )
 
 
@@ -264,8 +261,8 @@ class ConstantNameAndType(GenericConstant):
         super().__init__(CONSTANT_NameAndType)
 
     def parse(self, fd):
-        self.__name_index = read_bytes.read_u2_int(fd)
-        self.__descriptor_index = read_bytes.read_u2_int(fd)
+        self.name_index = read_bytes.read_u2_int(fd)
+        self.descriptor_index = read_bytes.read_u2_int(fd)
         # TODO: validate indexs in constant_pool after parse all
         # In spec 4.4.6
 
@@ -273,9 +270,9 @@ class ConstantNameAndType(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_NameAndType_info - name_index:' +
-            str(self.__name_index) +
+            str(self.name_index) +
             '; descriptor_index:' +
-            str(self.__descriptor_index)
+            str(self.descriptor_index)
         )
 
 
@@ -287,16 +284,16 @@ class ConstantUtf8(GenericConstant):
 
     def parse(self, fd):
         length = read_bytes.read_u2_int(fd)
-        self.__str_value = read_bytes.read_string(fd, length)
+        self.str_value = read_bytes.read_string(fd, length)
 
     def value(self):
-        return self.__str_value
+        return self.str_value
 
     def debug_info(self, prefix):
         logging.debug(
             prefix +
             'CONSTANT_Utf8_info - string value:' +
-            str(self.__str_value)
+            str(self.str_value)
         )
 
 
@@ -308,8 +305,8 @@ class ConstantMethodHandle(GenericConstant):
         super().__init__(CONSTANT_MethodHandle)
 
     def parse(self, fd):
-        self.__reference_kind = read_bytes.read_u1_int(fd)
-        self.__reference_index = read_bytes.read_u2_int(fd)
+        self.reference_kind = read_bytes.read_u1_int(fd)
+        self.reference_index = read_bytes.read_u2_int(fd)
         # TODO: validate type and index after parse all
         # In spec 4.6.8
 
@@ -317,9 +314,9 @@ class ConstantMethodHandle(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_MethodHandle_info - reference_kind:' +
-            str(self.__reference_kind) +
+            str(self.reference_kind) +
             '; reference_index:' +
-            str(self.__reference_index)
+            str(self.reference_index)
         )
 
 
@@ -331,7 +328,7 @@ class ConstantMethodType(GenericConstant):
         super().__init__(CONSTANT_MethodType)
 
     def parse(self, fd):
-        self.__descriptor_index = read_bytes.read_u2_int(fd)
+        self.descriptor_index = read_bytes.read_u2_int(fd)
         # TODO: validate  index after parse all
         # In spec 4.6.9
 
@@ -339,7 +336,7 @@ class ConstantMethodType(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_MethodType_info - descriptor_index:' +
-            str(self.__descriptor_index)
+            str(self.descriptor_index)
         )
 
 
@@ -352,8 +349,8 @@ class ConstantInvokeDynamic(GenericConstant):
         super().__init__(CONSTANT_InvokeDynamic)
 
     def parse(self, fd):
-        self.__bootstrap_method_attr_index = read_bytes.read_u2_int(fd)
-        self.__name_and_type_index = read_bytes.read_u2_int(fd)
+        self.bootstrap_method_attr_index = read_bytes.read_u2_int(fd)
+        self.name_and_type_index = read_bytes.read_u2_int(fd)
         # TODO: validate  index after parse all
         # In spec 4.6.10
 
@@ -361,7 +358,7 @@ class ConstantInvokeDynamic(GenericConstant):
         logging.debug(
             prefix +
             'CONSTANT_InvokeDynamic_info - bootstrap_method_attr_index:' +
-            str(self.__bootstrap_method_attr_index) +
+            str(self.bootstrap_method_attr_index) +
             '; name_and_type_index:' +
-            str(self.__name_and_type_index)
+            str(self.name_and_type_index)
         )

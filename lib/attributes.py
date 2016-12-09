@@ -42,15 +42,15 @@ def parse_attr(fd, class_file):
 
 class Attribute(object):
     def __init__(self, name, length):
-        self._name = name
-        self._length = length
+        self.name = name
+        self.length = length
 
     def parse_info(self, fd, class_file):
-        self.__info = fd.read(self._length)
+        self.info = fd.read(self.length)
 
     def debug_info(self, prefix=''):
-        logging.debug(prefix + 'Attribute name:' + str(self._name))
-        logging.debug(prefix + 'Attribute length:' + str(self._length))
+        logging.debug(prefix + 'Attribute name:' + str(self.name))
+        logging.debug(prefix + 'Attribute length:' + str(self.length))
 
 
 '''Five critical attributes to correct interpretation of the class file'''
@@ -62,41 +62,41 @@ class ConstantValueAttribute(Attribute):
 
 class CodeAttribute(Attribute):
     def parse_info(self, fd, class_file):
-        self.__max_stack = read_bytes.read_u2_int(fd)
-        self.__max_locals = read_bytes.read_u2_int(fd)
-        self.__code_length = read_bytes.read_u4_int(fd)
-        self.__code = fd.read(self.__code_length)
-        self.__exception_table_length = read_bytes.read_u2_int(fd)
-        self.__exception_table = []
-        for _ in range(self.__exception_table_length):
+        self.max_stack = read_bytes.read_u2_int(fd)
+        self.max_locals = read_bytes.read_u2_int(fd)
+        self.code_length = read_bytes.read_u4_int(fd)
+        self.code = fd.read(self.code_length)
+        self.exception_table_length = read_bytes.read_u2_int(fd)
+        self.exception_table = []
+        for _ in range(self.exception_table_length):
             start_pc = read_bytes.read_u2_int(fd)
             end_pc = read_bytes.read_u2_int(fd)
             handler_pc = read_bytes.read_u2_int(fd)
             catch_type = read_bytes.read_u2_int(fd)
-            self.__exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
-        (self.__attributes_count, self.__attributes) = parse(fd, class_file)
+            self.exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
+        (self.attributes_count, self.attributes) = parse(fd, class_file)
 
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
-        logging.debug(prefix + 'code length:' + str(self.__code_length))
-        logging.debug(prefix + 'code: ' + ' '.join('0x{:02X}'.format(i) for i in self.__code))
-        logging.debug(prefix + 'attribute count:' + str(self.__attributes_count))
-        for attr in self.__attributes:
+        logging.debug(prefix + 'code length:' + str(self.code_length))
+        logging.debug(prefix + 'code: ' + ' '.join('0x{:02X}'.format(i) for i in self.code))
+        logging.debug(prefix + 'attribute count:' + str(self.attributes_count))
+        for attr in self.attributes:
             attr.debug_info(prefix + '       - ')
 
 
 class StackMapTableAttribute(Attribute):
     def parse_info(self, fd, class_file):
-        self.__number_of_entries = read_bytes.read_u2_int(fd)
-        self.__stack_map_frame_entries = []
-        for _ in range(self.__number_of_entries):
+        self.number_of_entries = read_bytes.read_u2_int(fd)
+        self.stack_map_frame_entries = []
+        for _ in range(self.number_of_entries):
             frame = parse_stack_map_frame(fd)
-            self.__stack_map_frame_entries.append(frame)
+            self.stack_map_frame_entries.append(frame)
 
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
-        logging.debug(prefix + 'Num of entries:' + str(self.__number_of_entries))
-        for frame in self.__stack_map_frame_entries:
+        logging.debug(prefix + 'Num of entries:' + str(self.number_of_entries))
+        for frame in self.stack_map_frame_entries:
             pass
             # frame.debug_info(prefix + '       - ')
 
@@ -111,20 +111,11 @@ class BootstrapMethodsAttribute(Attribute):
 
 class StackMapFrame(object):
     def __init__(self, frame_type):
-        self.__frame_type = frame_type
-        self.__offset_delta = 0
+        self.frame_type = frame_type
+        self.offset_delta = 0
 
     def parse(self, fd):
         raise NotImplementedError('Parse not implemented for generic stack map frame.')
-
-    def get_frame_type(self):
-        return self.__frame_type
-
-    def set_offset_delta(self, offset_delta):
-        self.__offset_delta = offset_delta
-
-    def get_offset_delta(self):
-        return self.__offset_delta
 
 
 class SameFrame(StackMapFrame):
@@ -133,7 +124,7 @@ class SameFrame(StackMapFrame):
         of the tag item, frame_type.
         '''
         super().__init__(SAME)
-        self.set_offset_delta(frame_type)
+        self.offset_delta = frame_type
 
     def parse(self, fd):
         pass
@@ -145,10 +136,10 @@ class SameLocals1StackItemFrame(StackMapFrame):
         the formula frame_type - 64
         '''
         super().__init__(SAME_LOCALS_1_STACK_ITEM)
-        self.set_offset_delta(frame_type - 64)
+        self.offset_delta = frame_type - 64
 
     def parse(self, fd):
-        self.__verification_type_info = parse_verification_type_info(fd)
+        self.verification_type_info = parse_verification_type_info(fd)
 
 
 class SameLocals1StackItemFrameExtended(StackMapFrame):
@@ -156,17 +147,17 @@ class SameLocals1StackItemFrameExtended(StackMapFrame):
         super().__init__(SAME_LOCALS_1_STACK_ITEM_EXTENDED)
 
     def parse(self, fd):
-        self.set_offset_delta(read_bytes.read_u2_int(fd))
-        self.__verification_type_info = parse_verification_type_info(fd)
+        self.offset_delta = read_bytes.read_u2_int(fd)
+        self.verification_type_info = parse_verification_type_info(fd)
 
 
 class ChopFrame(StackMapFrame):
     def __init__(self, frame_type):
         super().__init__(CHOP)
-        self.__num_of_absent = 251 - frame_type
+        self.num_of_absent = 251 - frame_type
 
     def parse(self, fd):
-        self.set_offset_delta(read_bytes.read_u2_int(fd))
+        self.offset_delta = read_bytes.read_u2_int(fd)
 
 
 class SameFrameExtended(StackMapFrame):
@@ -174,38 +165,38 @@ class SameFrameExtended(StackMapFrame):
         super().__init__(SAME_FRAME_EXTENDED)
 
     def parse(self, fd):
-        self.set_offset_delta(read_bytes.read_u2_int(fd))
+        self.offset_delta = read_bytes.read_u2_int(fd)
 
 
 class AppendFrame(StackMapFrame):
     def __init__(self, frame_type):
         super().__init__(APPEND)
-        self.__locals = []
-        self.__num_of_additional = frame_type - 251
+        self.locals = []
+        self.num_of_additional = frame_type - 251
 
     def parse(self, fd):
-        self.set_offset_delta(read_bytes.read_u2_int(fd))
-        for _ in range(self.__num_of_additional):
+        self.offset_delta = read_bytes.read_u2_int(fd)
+        for _ in range(self.num_of_additional):
             v_type_info = parse_verification_type_info(fd)
-            self.__locals.append(v_type_info)
+            self.locals.append(v_type_info)
 
 
 class FullFrame(StackMapFrame):
     def __init__(self, frame_type):
         super().__init__(FULL_FRAME)
-        self.__locals = []
-        self.__stack = []
+        self.locals = []
+        self.stack = []
 
     def parse(self, fd):
-        self.set_offset_delta(read_bytes.read_u2_int(fd))
-        self.__number_of_locals = read_bytes.read_u2_int(fd)
-        for _ in range(self.__number_of_locals):
+        self.offset_delta = read_bytes.read_u2_int(fd)
+        self.number_of_locals = read_bytes.read_u2_int(fd)
+        for _ in range(self.number_of_locals):
             v_type_info = parse_verification_type_info(fd)
-            self.__locals.append(v_type_info)
-        self.__number_of_stack_items = read_bytes.read_u2_int(fd)
-        for _ in range(self.__number_of_stack_items):
+            self.locals.append(v_type_info)
+        self.number_of_stack_items = read_bytes.read_u2_int(fd)
+        for _ in range(self.number_of_stack_items):
             v_type_info = parse_verification_type_info(fd)
-            self.__stack.append(v_type_info)
+            self.stack.append(v_type_info)
 
 
 _frame_type = {

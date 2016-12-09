@@ -41,9 +41,17 @@ class ClassStruct(object):
     def name(self):
         this_class = self.constant(self.this_class)
         assert type(this_class) is constant_pool.ConstantClass, 'this_class index in constant_pool is not CONSTANT_Class_info'
-        name_str = self.constant(this_class.name_index())
+        name_str = self.constant(this_class.name_index)
         assert type(name_str) is constant_pool.ConstantUtf8, 'name_index in constant_pool is not CONSTANT_Utf8_info'
         return name_str.value()
+
+    def find_method(self, method_name):
+        for method in self.methods:
+            name_const = self.constant(method.name_index)
+            assert type(name_const) is constant_pool.ConstantUtf8, 'Method {0} name_index in constant_pool is not CONSTANT_Utf8_info'.format(method_name)
+            if name_const.value() == method_name:
+                return method
+        return None
 
     def validate(self):
         '''Valid if class struct according to spec
@@ -216,18 +224,18 @@ class Field(object):
             logging.debug(prefix + 'access_flags - ACC_ENUM:' + str(self.enum()))
 
     def parse(self, fd, class_file):
-        self.__access_flags = Field.AccessFlags()
-        self.__access_flags.parse(fd)
-        self.__name_index = read_bytes.read_u2_int(fd)
-        self.__descriptor_index = read_bytes.read_u2_int(fd)
-        (self.__attributes_count, self.__attributes) = attributes.parse(fd, class_file)
+        self.access_flags = Field.AccessFlags()
+        self.access_flags.parse(fd)
+        self.name_index = read_bytes.read_u2_int(fd)
+        self.descriptor_index = read_bytes.read_u2_int(fd)
+        (self.attributes_count, self.attributes) = attributes.parse(fd, class_file)
 
     def debug_info(self):
-        logging.debug('Field  - name index:' + str(self.__name_index))
-        logging.debug('       - descriptor index:' + str(self.__descriptor_index))
-        self.__access_flags.debug_info('       - ')
-        logging.debug('       - attributes count:' + str(self.__attributes_count))
-        for attr in self.__attributes:
+        logging.debug('Field  - name index:' + str(self.name_index))
+        logging.debug('       - descriptor index:' + str(self.descriptor_index))
+        self.access_flags.debug_info('       - ')
+        logging.debug('       - attributes count:' + str(self.attributes_count))
+        for attr in self.attributes:
             attr.debug_info('       - ')
 
 
@@ -272,18 +280,25 @@ class Method(object):
             logging.debug(prefix + 'access_flags - ACC_SYNTHETIC:' + str(self.synthetic()))
 
     def parse(self, fd, class_file):
-        self.__access_flags = Method.AccessFlags()
-        self.__access_flags.parse(fd)
-        self.__name_index = read_bytes.read_u2_int(fd)
-        self.__descriptor_index = read_bytes.read_u2_int(fd)
-        self.__attributes_count, self.__attributes = attributes.parse(fd, class_file)
+        self.access_flags = Method.AccessFlags()
+        self.access_flags.parse(fd)
+        self.name_index = read_bytes.read_u2_int(fd)
+        self.descriptor_index = read_bytes.read_u2_int(fd)
+        self.attributes_count, self.attributes = attributes.parse(fd, class_file)
+
+    def code(self):
+        for attr in self.attributes:
+            if type(attr) is attributes.CodeAttribute:
+                # Only one code attribute in Method
+                return attr
+        return None
 
     def debug_info(self):
-        logging.debug('Method - name index:' + str(self.__name_index))
-        logging.debug('       - descriptor index:' + str(self.__descriptor_index))
-        self.__access_flags.debug_info('       - ')
-        logging.debug('       - attributes count:' + str(self.__attributes_count))
-        for attr in self.__attributes:
+        logging.debug('Method - name index:' + str(self.name_index))
+        logging.debug('       - descriptor index:' + str(self.descriptor_index))
+        self.access_flags.debug_info('       - ')
+        logging.debug('       - attributes count:' + str(self.attributes_count))
+        for attr in self.attributes:
             attr.debug_info('       - ')
 
 
