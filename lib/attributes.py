@@ -1,6 +1,7 @@
 import logging
 from lib import read_bytes
 from lib import constant_pool
+from lib import instruction
 
 
 SAME = 0
@@ -61,6 +62,10 @@ class ConstantValueAttribute(Attribute):
 
 
 class CodeAttribute(Attribute):
+    def code_to_instructions(self):
+        for b in (b for b in self.code if b in instruction._t):
+            self.instructions.append(instruction._t[b]())
+
     def parse_info(self, fd, class_file):
         self.max_stack = read_bytes.read_u2_int(fd)
         self.max_locals = read_bytes.read_u2_int(fd)
@@ -75,6 +80,8 @@ class CodeAttribute(Attribute):
             catch_type = read_bytes.read_u2_int(fd)
             self.exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
         (self.attributes_count, self.attributes) = parse(fd, class_file)
+        self.instructions = []
+        self.code_to_instructions()
 
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
@@ -86,6 +93,10 @@ class CodeAttribute(Attribute):
 
 
 class StackMapTableAttribute(Attribute):
+    '''A StackMapTable attribute is used during the process of
+    verification by type checking, which maybe means, I can ignore
+    it now.
+    '''
     def parse_info(self, fd, class_file):
         self.number_of_entries = read_bytes.read_u2_int(fd)
         self.stack_map_frame_entries = []
@@ -97,8 +108,7 @@ class StackMapTableAttribute(Attribute):
         super().debug_info(prefix)
         logging.debug(prefix + 'Num of entries:' + str(self.number_of_entries))
         for frame in self.stack_map_frame_entries:
-            pass
-            # frame.debug_info(prefix + '       - ')
+            frame.debug_info(prefix + '       - ')
 
 
 class ExceptionsAttribute(Attribute):
@@ -116,6 +126,9 @@ class StackMapFrame(object):
 
     def parse(self, fd):
         raise NotImplementedError('Parse not implemented for generic stack map frame.')
+
+    def debug_info(self, prefix):
+        print(prefix + type(self).__name__ + ', offset delta {offset}'.format(offset=self.offset_delta))
 
 
 class SameFrame(StackMapFrame):
