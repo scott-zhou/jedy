@@ -299,7 +299,7 @@ class Method(object):
         self.access_flags.debug_info('       - ')
         logging.debug('       - attributes count:' + str(self.attributes_count))
         for attr in self.attributes:
-            attr.debug_info('       - ')
+            attr.debug_info('       -       - ')
 
 
 def parse(file_name, loader=BootstrapClassLoader):

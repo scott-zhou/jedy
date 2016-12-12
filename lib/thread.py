@@ -1,11 +1,12 @@
 import logging
 from lib import run_time_data
 from lib.frame import Frame
+from collections import deque
 
 
 class Thread(object):
     def __init__(self):
-        self.stack = []
+        self.stack = deque()
         self.pc_register = None  # ? How to use it?
 
     def run(self, classname):
@@ -25,6 +26,7 @@ class Thread(object):
         code = method.code()
         if not code:
             raise RuntimeError('Could not find code in method')
+        frame.local_variables = [None for _ in range(code.max_locals)]
         logging.debug('size of instructions: {0}'.format(len(code.instructions)))
         for i in code.instructions:
             i.execute(frame)

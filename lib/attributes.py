@@ -1,3 +1,4 @@
+import itertools
 import logging
 from lib import read_bytes
 from lib import constant_pool
@@ -63,8 +64,15 @@ class ConstantValueAttribute(Attribute):
 
 class CodeAttribute(Attribute):
     def code_to_instructions(self):
-        for b in (b for b in self.code if b in instruction._t):
-            self.instructions.append(instruction._t[b]())
+        codes = iter(self.code)
+        for byte in codes:
+            if byte not in instruction.types:
+                logging.warning('Not recognized instruction 0x{:02X}'.format(byte))
+                continue
+            i = instruction.types[byte]()
+            operands = bytes(itertools.islice(codes, i.len_of_operand()))
+            i.put_operands(operands)
+            self.instructions.append(i)
 
     def parse_info(self, fd, class_file):
         self.max_stack = read_bytes.read_u2_int(fd)
@@ -85,6 +93,8 @@ class CodeAttribute(Attribute):
 
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
+        logging.debug(prefix + 'max stack:' + str(self.max_stack))
+        logging.debug(prefix + 'max locals:' + str(self.max_locals))
         logging.debug(prefix + 'code length:' + str(self.code_length))
         logging.debug(prefix + 'code: ' + ' '.join('0x{:02X}'.format(i) for i in self.code))
         logging.debug(prefix + 'attribute count:' + str(self.attributes_count))
