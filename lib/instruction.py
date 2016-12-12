@@ -2,6 +2,9 @@ import logging
 
 
 class _instruction(object):
+    def __init__(self, address):
+        self.address = address
+
     def len_of_operand(self):
         return 0
 
@@ -10,7 +13,8 @@ class _instruction(object):
 
 
 class iconst_i(_instruction):
-    def __init__(self, i):
+    def __init__(self, address, i=0):
+        super().__init__(address)
         self.i = i
 
     def execute(self, frame):
@@ -19,8 +23,8 @@ class iconst_i(_instruction):
 
 
 class bipush(iconst_i):
-    def __init__(self):
-        pass
+    def __init__(self, address):
+        super().__init__(address)
 
     def len_of_operand(self):
         return 1
@@ -31,42 +35,55 @@ class bipush(iconst_i):
 
 
 class iconst_m1(iconst_i):
-    def __init__(self):
-        super().__init__(-1)
+    def __init__(self, address):
+        super().__init__(address, -1)
 
 
 class iconst_0(iconst_i):
-    def __init__(self):
-        super().__init__(0)
+    def __init__(self, address):
+        super().__init__(address, 0)
 
 
 class iconst_1(iconst_i):
-    def __init__(self):
-        super().__init__(1)
+    def __init__(self, address):
+        super().__init__(address, 1)
 
 
 class iconst_2(iconst_i):
-    def __init__(self):
-        super().__init__(2)
+    def __init__(self, address):
+        super().__init__(address, 2)
 
 
 class iconst_3(iconst_i):
-    def __init__(self):
-        super().__init__(3)
+    def __init__(self, address):
+        super().__init__(address, 3)
 
 
 class iconst_4(iconst_i):
-    def __init__(self):
-        super().__init__(4)
+    def __init__(self, address):
+        super().__init__(address, 4)
 
 
 class iconst_5(iconst_i):
-    def __init__(self):
-        super().__init__(5)
+    def __init__(self, address):
+        super().__init__(address, 5)
+
+
+class sipush(iconst_i):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.i = int.from_bytes(operand_bytes, byteorder='big', signed=False)
 
 
 class istore_n(_instruction):
-    def __init__(self, n):
+    def __init__(self, address, n=0):
+        super().__init__(address)
         self.n = n
 
     def execute(self, frame):
@@ -77,8 +94,8 @@ class istore_n(_instruction):
 
 
 class istore(istore_n):
-    def __init__(self):
-        pass
+    def __init__(self, address):
+        super().__init__(address)
 
     def len_of_operand(self):
         return 1
@@ -89,27 +106,28 @@ class istore(istore_n):
 
 
 class istore_0(istore_n):
-    def __init__(self):
-        super().__init__(0)
+    def __init__(self, address):
+        super().__init__(address, 0)
 
 
 class istore_1(istore_n):
-    def __init__(self):
-        super().__init__(1)
+    def __init__(self, address):
+        super().__init__(address, 1)
 
 
 class istore_2(istore_n):
-    def __init__(self):
-        super().__init__(2)
+    def __init__(self, address):
+        super().__init__(address, 2)
 
 
 class istore_3(istore_n):
-    def __init__(self):
-        super().__init__(3)
+    def __init__(self, address):
+        super().__init__(address, 3)
 
 
 class iload_n(_instruction):
-    def __init__(self, n):
+    def __init__(self, address, n=0):
+        super().__init__(address)
         self.n = n
 
     def execute(self, frame):
@@ -119,8 +137,8 @@ class iload_n(_instruction):
 
 
 class iload(iload_n):
-    def __init__(self):
-        pass
+    def __init__(self, address):
+        super().__init__(address)
 
     def len_of_operand(self):
         return 1
@@ -131,23 +149,23 @@ class iload(iload_n):
 
 
 class iload_0(iload_n):
-    def __init__(self):
-        super().__init__(0)
+    def __init__(self, address):
+        super().__init__(address, 0)
 
 
 class iload_1(iload_n):
-    def __init__(self):
-        super().__init__(1)
+    def __init__(self, address):
+        super().__init__(address, 1)
 
 
 class iload_2(iload_n):
-    def __init__(self):
-        super().__init__(2)
+    def __init__(self, address):
+        super().__init__(address, 2)
 
 
 class iload_3(iload_n):
-    def __init__(self):
-        super().__init__(3)
+    def __init__(self, address):
+        super().__init__(address, 3)
 
 
 types = {
@@ -159,6 +177,7 @@ types = {
     0x07: iconst_4,
     0x08: iconst_5,
     0x10: bipush,
+    0x11: sipush,
     0x15: iload,
     0x1a: iload_0,
     0x1b: iload_1,

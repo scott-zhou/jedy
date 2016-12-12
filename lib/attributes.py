@@ -3,6 +3,7 @@ import logging
 from lib import read_bytes
 from lib import constant_pool
 from lib import instruction
+from collections import defaultdict
 
 
 SAME = 0
@@ -65,11 +66,11 @@ class ConstantValueAttribute(Attribute):
 class CodeAttribute(Attribute):
     def code_to_instructions(self):
         codes = iter(self.code)
-        for byte in codes:
+        for pos, byte in enumerate(codes):
             if byte not in instruction.types:
-                logging.warning('Not recognized instruction 0x{:02X}'.format(byte))
-                continue
-            i = instruction.types[byte]()
+                logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(byte, pos=pos))
+                break
+            i = instruction.types[byte](pos)
             operands = bytes(itertools.islice(codes, i.len_of_operand()))
             i.put_operands(operands)
             self.instructions.append(i)
