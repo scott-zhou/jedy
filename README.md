@@ -12,3 +12,6 @@ Created by [Scott Zhou](http://www.scottzhou.me)
 
 ## License
 This project is licensed under the [MIT license](http://opensource.org/licenses/MIT).
+
+##MISC
+JDK version in test: jdk1.8.0_60
