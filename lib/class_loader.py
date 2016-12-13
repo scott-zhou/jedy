@@ -1,9 +1,15 @@
 '''Parse JVM class file, according JAVA SE 8 spec
 '''
+import os
 import logging
 from lib import read_bytes
 from lib import constant_pool
 from lib import attributes
+from lib import run_time_data
+
+classpath = './'
+java_home = ''
+java_library_path = ''
 
 
 class ClassStruct(object):
@@ -307,3 +313,12 @@ def parse(file_name, loader=BootstrapClassLoader):
     with open(file_name, 'rb') as java_class_file:
         class_struct = class_loader.parse(java_class_file)
     return class_struct
+
+
+def load_class(classname):
+    filename = classname + '.class'
+    possible_path = os.path.join(classpath, filename)
+    if os.path.isfile(possible_path):
+        class_struct = parse(possible_path)
+        run_time_data.method_area[classname] = class_struct
+        return class_struct

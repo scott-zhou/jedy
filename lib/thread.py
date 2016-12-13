@@ -18,9 +18,10 @@ class Thread(object):
             logging.error('Could not find or load main class ' + classname)
             return
         logging.debug('Now we are at the entrance of main function, almost there...')
-        self.invoke_method(main_method)
+        self.invoke_method('main', main_method)
+        logging.debug('Thread exit')
 
-    def invoke_method(self, method):
+    def invoke_method(self, name, method):
         frame = Frame()
         self.stack.append(frame)
         code = method.code()
@@ -41,3 +42,5 @@ class Thread(object):
                     i += 1
             else:
                 i += 1
+        self.stack.pop()
+        logging.debug('Method {name} exit'.format(name=name))

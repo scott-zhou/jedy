@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+import os
 from lib import class_loader
 from lib import run_time_data
 from lib import thread
@@ -15,7 +16,9 @@ def parse_argument():
         action='store_true',
         help='Output debug informations.'
     )
-    parser.add_argument('--classfile', help='Java class file path name')
+    parser.add_argument('--classpath', help='Java class file path name')
+    parser.add_argument('--java-home', help='Java home path')
+    parser.add_argument('--java-library-path', help='Java libraqry path')
     parser.add_argument('classname', help='Java class name')
     return parser.parse_args()
 
@@ -36,10 +39,16 @@ def init_logging(debug):
 
 if __name__ == "__main__":
     args = parse_argument()
+    print(args)
     init_logging(args.debug)
-    class_struct = class_loader.parse(args.classfile)
+    if args.classpath:
+        class_loader.classpath = args.classpath
+    else:
+        class_loader.classpath = os.path.dirname(os.path.realpath(__file__))
+    class_loader.java_home = args.java_home
+    class_loader.java_library_path = args.java_library_path
+    class_struct = class_loader.load_class(args.classname)
     class_struct.debug_info()
-    run_time_data.method_area[class_struct.name()] = class_struct
     main_thread = thread.Thread()
     run_time_data.thread_pool.append(main_thread)
     main_thread.run(args.classname)

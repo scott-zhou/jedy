@@ -194,9 +194,6 @@ class iload_3(iload_n):
 
 
 class if_icmpcond(_instruction):
-    def __init__(self, address):
-        super().__init__(address)
-
     def len_of_operand(self):
         return 2
 
@@ -212,6 +209,12 @@ class if_icmpcond(_instruction):
         if self.cmp(value1, value2):
             self.need_jump = True
             self.jump_to_address = self.address + self.offset
+        logging.debug(
+            'Instruction {na}: compare value1 and value2 from stack, result need {j}'.format(
+                na=self.class_name_and_address(),
+                j='jump to address {0}'.format(self.jump_to_address) if self.need_jump else 'not jump'
+            )
+        )
 
     def cmp(self, value1, value2):
         raise NotImplementedError('cmp function in if_icmpcond will not be implement.')
@@ -247,6 +250,88 @@ class if_icmple(if_icmpcond):
         return value1 <= value2
 
 
+class iadd(_instruction):
+    def execute(self, frame):
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        assert type(value1) is int
+        assert type(value2) is int
+        value = value1 + value2
+        frame.operand_stack.append(value)
+        logging.debug(
+            'Instruction {na}: add value1 and value2, push {v} onto operand stack'.format(
+                na=self.class_name_and_address(),
+                v=value
+            )
+        )
+
+
+class imul(_instruction):
+    def execute(self, frame):
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        assert type(value1) is int
+        assert type(value2) is int
+        value = value1 * value2
+        frame.operand_stack.append(value)
+        logging.debug(
+            'Instruction {na}: multiply value1 and value2, push {v} onto operand stack'.format(
+                na=self.class_name_and_address(),
+                v=value
+            )
+        )
+
+
+
+class iinc(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(operand_bytes[:1], byteorder='big', signed=False)
+        self.const = int.from_bytes(operand_bytes[1:], byteorder='big', signed=True)
+
+    def execute(self, frame):
+        frame.local_variables[self.index] = frame.local_variables[self.index] + self.const
+        logging.debug(
+            'Instruction {na}: increate local value {i} by {v} to value {fv}'.format(
+                na=self.class_name_and_address(),
+                i=self.index,
+                v=self.const,
+                fv=frame.local_variables[self.index]
+            )
+        )
+
+
+class goto(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.offset = int.from_bytes(operand_bytes, byteorder='big', signed=True)
+
+    def execute(self, frame):
+        self.need_jump = True
+        self.jump_to_address = self.address + self.offset
+        logging.debug(
+            'Instruction {na}: jump to address {a}'.format(
+                na=self.class_name_and_address(),
+                a=self.jump_to_address
+            )
+        )
+
+
+class instruction_return(_instruction):
+    def execute(self, frame):
+        logging.debug(
+            'Instruction {na}: void return'.format(
+                na=self.class_name_and_address()
+            )
+        )
+
+
 types = {
     0x02: iconst_m1,
     0x03: iconst_0,
@@ -267,10 +352,15 @@ types = {
     0x3c: istore_1,
     0x3d: istore_2,
     0x3e: istore_3,
+    0x60: iadd,
+    0x68: imul,
+    0x84: iinc,
     0x9f: if_icmpeq,
     0xa0: if_icmpne,
     0xa1: if_icmplt,
     0xa2: if_icmpge,
     0xa3: if_icmpgt,
     0xa4: if_icmple,
+    0xa7: goto,
+    0xb1: instruction_return,
 }
