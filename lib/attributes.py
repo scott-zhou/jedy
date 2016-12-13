@@ -1,9 +1,7 @@
-import itertools
 import logging
 from lib import read_bytes
 from lib import constant_pool
 from lib import instruction
-from collections import defaultdict
 
 
 SAME = 0
@@ -65,15 +63,19 @@ class ConstantValueAttribute(Attribute):
 
 class CodeAttribute(Attribute):
     def code_to_instructions(self):
-        codes = iter(self.code)
-        for pos, byte in enumerate(codes):
+        pos = 0
+        while pos < len(self.code):
+            byte = self.code[pos]
             if byte not in instruction.types:
                 logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(byte, pos=pos))
                 break
-            i = instruction.types[byte](pos)
-            operands = bytes(itertools.islice(codes, i.len_of_operand()))
-            i.put_operands(operands)
-            self.instructions.append(i)
+            inst = instruction.types[byte](pos)
+            operands_start = pos + 1
+            operands_end = operands_start + inst.len_of_operand()
+            operands = bytes(self.code[operands_start:operands_end])
+            inst.put_operands(operands)
+            self.instructions.append(inst)
+            pos = operands_end
 
     def parse_info(self, fd, class_file):
         self.max_stack = read_bytes.read_u2_int(fd)

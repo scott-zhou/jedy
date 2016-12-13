@@ -4,12 +4,20 @@ import logging
 class _instruction(object):
     def __init__(self, address):
         self.address = address
+        self.need_jump = False
+        self.jump_to_address = None
 
     def len_of_operand(self):
         return 0
 
     def put_operands(self, operand_bytes):
         pass
+
+    def class_name_and_address(self):
+        return '{name} ({address})'.format(name=type(self).__name__, address=self.address)
+
+    def jump(self):
+        return self.need_jump, self.jump_to_address
 
 
 class iconst_i(_instruction):
@@ -19,7 +27,12 @@ class iconst_i(_instruction):
 
     def execute(self, frame):
         frame.operand_stack.append(self.i)
-        logging.debug('Instruction: push {i} onto operand stack'.format(i=self.i))
+        logging.debug(
+            'Instruction {na}: push {i} onto operand stack'.format(
+                na=self.class_name_and_address(),
+                i=self.i
+            )
+        )
 
 
 class bipush(iconst_i):
@@ -90,7 +103,13 @@ class istore_n(_instruction):
         i = frame.operand_stack.pop()
         assert type(i) is int
         frame.local_variables[self.n] = i
-        logging.debug('Instruction: pop {i} from operand stack and set to local variable {n}'.format(i=i, n=self.n))
+        logging.debug(
+            'Instruction {na}: pop {i} from operand stack and set to local variable {n}'.format(
+                na=self.class_name_and_address(),
+                i=i,
+                n=self.n
+            )
+        )
 
 
 class istore(istore_n):
@@ -133,7 +152,13 @@ class iload_n(_instruction):
     def execute(self, frame):
         assert type(frame.local_variables[self.n]) is int
         frame.operand_stack.append(frame.local_variables[self.n])
-        logging.debug('Instruction: push {i} onto operand stack from local variable {n}'.format(i=frame.local_variables[self.n], n=self.n))
+        logging.debug(
+            'Instruction {na}: push {i} onto operand stack from local variable {n}'.format(
+                na=self.class_name_and_address(),
+                i=frame.local_variables[self.n],
+                n=self.n
+            )
+        )
 
 
 class iload(iload_n):
@@ -168,6 +193,60 @@ class iload_3(iload_n):
         super().__init__(address, 3)
 
 
+class if_icmpcond(_instruction):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.offset = int.from_bytes(operand_bytes, byteorder='big', signed=True)
+
+    def execute(self, frame):
+        self.need_jump = False
+        self.jump_to_address = None
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        if self.cmp(value1, value2):
+            self.need_jump = True
+            self.jump_to_address = self.address + self.offset
+
+    def cmp(self, value1, value2):
+        raise NotImplementedError('cmp function in if_icmpcond will not be implement.')
+
+
+class if_icmpeq(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 == value2
+
+
+class if_icmpne(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 != value2
+
+
+class if_icmplt(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 < value2
+
+
+class if_icmpge(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 >= value2
+
+
+class if_icmpgt(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 > value2
+
+
+class if_icmple(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 <= value2
+
+
 types = {
     0x02: iconst_m1,
     0x03: iconst_0,
@@ -188,4 +267,10 @@ types = {
     0x3c: istore_1,
     0x3d: istore_2,
     0x3e: istore_3,
+    0x9f: if_icmpeq,
+    0xa0: if_icmpne,
+    0xa1: if_icmplt,
+    0xa2: if_icmpge,
+    0xa3: if_icmpgt,
+    0xa4: if_icmple,
 }

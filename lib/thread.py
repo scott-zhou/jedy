@@ -28,5 +28,16 @@ class Thread(object):
             raise RuntimeError('Could not find code in method')
         frame.local_variables = [None for _ in range(code.max_locals)]
         logging.debug('size of instructions: {0}'.format(len(code.instructions)))
-        for i in code.instructions:
-            i.execute(frame)
+        i = 0
+        while i < len(code.instructions):
+            code.instructions[i].execute(frame)
+            need_jump, to_address = code.instructions[i].jump()
+            if need_jump:
+                logging.debug('Opps jump to ' + str(to_address))
+                i = 0
+                while i < len(code.instructions):
+                    if code.instructions[i].address == to_address:
+                        break
+                    i += 1
+            else:
+                i += 1
