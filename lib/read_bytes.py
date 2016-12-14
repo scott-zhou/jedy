@@ -1,24 +1,15 @@
 import struct
+import functools
 
 
 def _read_ux_int(fd, x):
     return int.from_bytes(fd.read(x), byteorder='big')
 
 
-def read_u1_int(fd):
-    return _read_ux_int(fd, 1)
-
-
-def read_u2_int(fd):
-    return _read_ux_int(fd, 2)
-
-
-def read_u4_int(fd):
-    return _read_ux_int(fd, 4)
-
-
-def read_u8_int(fd):
-    return _read_ux_int(fd, 8)
+read_u1_int = functools.partial(_read_ux_int, x=1)
+read_u2_int = functools.partial(_read_ux_int, x=2)
+read_u4_int = functools.partial(_read_ux_int, x=4)
+read_u8_int = functools.partial(_read_ux_int, x=8)
 
 
 def read_u4_float(fd):

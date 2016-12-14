@@ -34,7 +34,7 @@ class Thread(object):
             code.instructions[i].execute(frame)
             need_jump, to_address = code.instructions[i].jump()
             if need_jump:
-                logging.debug('Opps jump to ' + str(to_address))
+                logging.debug('Opps now a slow jump to ' + str(to_address))
                 i = 0
                 while i < len(code.instructions):
                     if code.instructions[i].address == to_address:
