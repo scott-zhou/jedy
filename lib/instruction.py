@@ -1,5 +1,14 @@
 import logging
 
+BYTECODE = {}
+
+
+def bytecode(code):
+    def bytecode_decorator(klass):
+        BYTECODE[code] = klass
+        return klass
+    return bytecode_decorator
+
 
 class _instruction(object):
     def __init__(self, address):
@@ -35,6 +44,7 @@ class iconst_i(_instruction):
         )
 
 
+@bytecode(0x10)
 class bipush(iconst_i):
     def __init__(self, address):
         super().__init__(address)
@@ -47,41 +57,49 @@ class bipush(iconst_i):
         self.i = operand_bytes[0]
 
 
+@bytecode(0x02)
 class iconst_m1(iconst_i):
     def __init__(self, address):
         super().__init__(address, -1)
 
 
+@bytecode(0x03)
 class iconst_0(iconst_i):
     def __init__(self, address):
         super().__init__(address, 0)
 
 
+@bytecode(0x04)
 class iconst_1(iconst_i):
     def __init__(self, address):
         super().__init__(address, 1)
 
 
+@bytecode(0x05)
 class iconst_2(iconst_i):
     def __init__(self, address):
         super().__init__(address, 2)
 
 
+@bytecode(0x06)
 class iconst_3(iconst_i):
     def __init__(self, address):
         super().__init__(address, 3)
 
 
+@bytecode(0x07)
 class iconst_4(iconst_i):
     def __init__(self, address):
         super().__init__(address, 4)
 
 
+@bytecode(0x08)
 class iconst_5(iconst_i):
     def __init__(self, address):
         super().__init__(address, 5)
 
 
+@bytecode(0x11)
 class sipush(iconst_i):
     def __init__(self, address):
         super().__init__(address)
@@ -112,6 +130,7 @@ class istore_n(_instruction):
         )
 
 
+@bytecode(0x36)
 class istore(istore_n):
     def __init__(self, address):
         super().__init__(address)
@@ -124,21 +143,25 @@ class istore(istore_n):
         self.n = operand_bytes[0]
 
 
+@bytecode(0x3b)
 class istore_0(istore_n):
     def __init__(self, address):
         super().__init__(address, 0)
 
 
+@bytecode(0x3c)
 class istore_1(istore_n):
     def __init__(self, address):
         super().__init__(address, 1)
 
 
+@bytecode(0x3d)
 class istore_2(istore_n):
     def __init__(self, address):
         super().__init__(address, 2)
 
 
+@bytecode(0x3e)
 class istore_3(istore_n):
     def __init__(self, address):
         super().__init__(address, 3)
@@ -161,6 +184,7 @@ class iload_n(_instruction):
         )
 
 
+@bytecode(0x15)
 class iload(iload_n):
     def __init__(self, address):
         super().__init__(address)
@@ -173,21 +197,25 @@ class iload(iload_n):
         self.n = operand_bytes[0]
 
 
+@bytecode(0x1a)
 class iload_0(iload_n):
     def __init__(self, address):
         super().__init__(address, 0)
 
 
+@bytecode(0x1b)
 class iload_1(iload_n):
     def __init__(self, address):
         super().__init__(address, 1)
 
 
+@bytecode(0x1c)
 class iload_2(iload_n):
     def __init__(self, address):
         super().__init__(address, 2)
 
 
+@bytecode(0x1d)
 class iload_3(iload_n):
     def __init__(self, address):
         super().__init__(address, 3)
@@ -220,36 +248,43 @@ class if_icmpcond(_instruction):
         raise NotImplementedError('cmp function in if_icmpcond will not be implement.')
 
 
+@bytecode(0x9f)
 class if_icmpeq(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 == value2
 
 
+@bytecode(0xa0)
 class if_icmpne(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 != value2
 
 
+@bytecode(0xa1)
 class if_icmplt(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 < value2
 
 
+@bytecode(0xa2)
 class if_icmpge(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 >= value2
 
 
+@bytecode(0xa3)
 class if_icmpgt(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 > value2
 
 
+@bytecode(0xa4)
 class if_icmple(if_icmpcond):
     def cmp(self, value1, value2):
         return value1 <= value2
 
 
+@bytecode(0x60)
 class iadd(_instruction):
     def execute(self, frame):
         value2 = frame.operand_stack.pop()
@@ -266,6 +301,7 @@ class iadd(_instruction):
         )
 
 
+@bytecode(0x68)
 class imul(_instruction):
     def execute(self, frame):
         value2 = frame.operand_stack.pop()
@@ -282,7 +318,7 @@ class imul(_instruction):
         )
 
 
-
+@bytecode(0x84)
 class iinc(_instruction):
     def len_of_operand(self):
         return 2
@@ -304,6 +340,7 @@ class iinc(_instruction):
         )
 
 
+@bytecode(0xa7)
 class goto(_instruction):
     def len_of_operand(self):
         return 2
@@ -323,6 +360,7 @@ class goto(_instruction):
         )
 
 
+@bytecode(0xb1)
 class instruction_return(_instruction):
     def execute(self, frame):
         logging.debug(
@@ -330,37 +368,3 @@ class instruction_return(_instruction):
                 na=self.class_name_and_address()
             )
         )
-
-
-types = {
-    0x02: iconst_m1,
-    0x03: iconst_0,
-    0x04: iconst_1,
-    0x05: iconst_2,
-    0x06: iconst_3,
-    0x07: iconst_4,
-    0x08: iconst_5,
-    0x10: bipush,
-    0x11: sipush,
-    0x15: iload,
-    0x1a: iload_0,
-    0x1b: iload_1,
-    0x1c: iload_2,
-    0x1d: iload_3,
-    0x36: istore,
-    0x3b: istore_0,
-    0x3c: istore_1,
-    0x3d: istore_2,
-    0x3e: istore_3,
-    0x60: iadd,
-    0x68: imul,
-    0x84: iinc,
-    0x9f: if_icmpeq,
-    0xa0: if_icmpne,
-    0xa1: if_icmplt,
-    0xa2: if_icmpge,
-    0xa3: if_icmpgt,
-    0xa4: if_icmple,
-    0xa7: goto,
-    0xb1: instruction_return,
-}

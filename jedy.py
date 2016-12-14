@@ -39,8 +39,8 @@ def init_logging(debug):
 
 if __name__ == "__main__":
     args = parse_argument()
-    print(args)
     init_logging(args.debug)
+    logging.debug(args)
     if args.classpath:
         class_loader.classpath = args.classpath
     else:

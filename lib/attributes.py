@@ -66,10 +66,10 @@ class CodeAttribute(Attribute):
         pos = 0
         while pos < len(self.code):
             byte = self.code[pos]
-            if byte not in instruction.types:
+            if byte not in instruction.BYTECODE:
                 logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(byte, pos=pos))
                 break
-            inst = instruction.types[byte](pos)
+            inst = instruction.BYTECODE[byte](pos)
             operands_start = pos + 1
             operands_end = operands_start + inst.len_of_operand()
             operands = bytes(self.code[operands_start:operands_end])
@@ -141,7 +141,7 @@ class StackMapFrame(object):
         raise NotImplementedError('Parse not implemented for generic stack map frame.')
 
     def debug_info(self, prefix):
-        print(prefix + type(self).__name__ + ', offset delta {offset}'.format(offset=self.offset_delta))
+        logging.debug(prefix + type(self).__name__ + ', offset delta {offset}'.format(offset=self.offset_delta))
 
 
 class SameFrame(StackMapFrame):
