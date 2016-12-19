@@ -63,8 +63,9 @@ class ConstantValueAttribute(Attribute):
 
 class CodeAttribute(Attribute):
     def code_to_instructions(self):
+        self.instructions = [None for _ in range(self.code_length)]
         pos = 0
-        while pos < len(self.code):
+        while pos < self.code_length:
             byte = self.code[pos]
             if byte not in instruction.BYTECODE:
                 logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(byte, pos=pos))
@@ -74,7 +75,7 @@ class CodeAttribute(Attribute):
             operands_end = operands_start + inst.len_of_operand()
             operands = bytes(self.code[operands_start:operands_end])
             inst.put_operands(operands)
-            self.instructions.append(inst)
+            self.instructions[pos] = inst
             pos = operands_end
 
     def parse_info(self, fd, class_file):
@@ -91,7 +92,6 @@ class CodeAttribute(Attribute):
             catch_type = read_bytes.read_u2_int(fd)
             self.exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
         (self.attributes_count, self.attributes) = parse(fd, class_file)
-        self.instructions = []
         self.code_to_instructions()
 
     def debug_info(self, prefix=''):

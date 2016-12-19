@@ -1,7 +1,8 @@
 import logging
+from collections import deque
 from lib import run_time_data
 from lib.frame import Frame
-from collections import deque
+from lib import instruction
 
 
 class Thread(object):
@@ -16,46 +17,56 @@ class Thread(object):
         self.invoke_method(classname, 'main', [], [])
         logging.debug('Thread exit')
 
-    def invoke_method(self, classname, funcname, param_types, params):
+    def ops_invoke_method(self, classname, funcname, param_types, params):
         klass = run_time_data.method_area[classname]
         method = klass.find_method(funcname)
         if not method:
             logging.error('Could not find method {m} in class {c}'.format(m=funcname, c=classname))
             return
-        logging.debug('Now we are at the entrance of main function, almost there...')
         frame = Frame(
-            run_time_data.method_area[classname],
+            klass,
             method,
             param_types,
             params
         )
-        self.stack.append(frame)
         code = method.code()
         if not code:
             raise RuntimeError('Could not find code in method')
+        return frame, code
+
+    def invoke_method(self, classname, funcname, param_types, params):
+        logging.debug('Now we are at the entrance of main function, almost there...')
+        frame, code = self.ops_invoke_method(classname, funcname, param_types, params)
+        self.stack.append(frame)
         logging.debug('size of instructions: {0}'.format(len(code.instructions)))
         i = 0
-        while i < len(code.instructions):
-            code.instructions[i].execute(frame)
-            if code.instructions[i].invoke_method:
-                return_v = self.invoke_method(
-                    code.instructions[i].invoke_class_name,
-                    code.instructions[i].invoke_method_name,
-                    code.instructions[i].invoke_parameter_types,
-                    code.instructions[i].invoke_parameters
+        while i < code.code_length:
+            ops = code.instructions[i]
+            ops.execute(frame)
+            next_step = ops.next_step()
+            if next_step == instruction.NextStep.invoke_method:
+                frame.next_ops_address = i + 1 + ops.len_of_operand()  # store the next
+                frame, code = self.ops_invoke_method(
+                    ops.invoke_class_name,
+                    ops.invoke_method_name,
+                    ops.invoke_parameter_types,
+                    ops.invoke_parameters
                 )
-                logging.debug('Return of call is {v}'.format(v=return_v))
-                if return_v is not None:
-                    frame.operand_stack.append(return_v)
-            need_jump, to_address = code.instructions[i].jump()
-            if need_jump:
-                logging.debug('Opps now a slow jump to ' + str(to_address))
+                self.stack.append(frame)
                 i = 0
-                while i < len(code.instructions):
-                    if code.instructions[i].address == to_address:
-                        break
-                    i += 1
+            elif next_step == instruction.NextStep.jump_to:
+                i = ops.jump_to_address
+            elif next_step == instruction.NextStep.method_return:
+                if len(self.stack) == 1:
+                    # TODO: How to returen value?
+                    break
+                self.stack.pop()
+                frame = self.stack[-1]
+                code = frame.code
+                i = frame.next_ops_address
+                if ops.return_value is not None:
+                    frame.operand_stack.append(ops.return_value)
             else:
-                i += 1
+                i = i + 1 + ops.len_of_operand()
         self.stack.pop()
         logging.debug('Method {name} exit'.format(name=funcname))

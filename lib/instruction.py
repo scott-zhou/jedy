@@ -1,4 +1,5 @@
 import logging
+from enum import Enum, unique
 from lib import constant_pool
 from lib import run_time_data
 from lib import descriptor
@@ -11,6 +12,14 @@ def bytecode(code):
         BYTECODE[code] = klass
         return klass
     return bytecode_decorator
+
+
+@unique
+class NextStep(Enum):
+    next_instruction = 0
+    jump_to = 1
+    invoke_method = 2
+    method_return = 3
 
 
 class _instruction(object):
@@ -26,6 +35,9 @@ class _instruction(object):
         self.invoke_parameter_types = []
         self.invoke_parameters = []
         self.invoke_return = []
+        # For return
+        self.method_return = False
+        self.return_value = None
 
     def init_jump(self):
         self.need_jump = False
@@ -48,8 +60,15 @@ class _instruction(object):
     def class_name_and_address(self):
         return '{name} (addr:{address})'.format(name=type(self).__name__, address=self.address)
 
-    def jump(self):
-        return self.need_jump, self.jump_to_address
+    def next_step(self):
+        if self.invoke_method:
+            return NextStep.invoke_method
+        elif self.need_jump:
+            return NextStep.jump_to
+        elif self.method_return:
+            return NextStep.method_return
+        else:
+            return NextStep.next_instruction
 
     def execute(self, frame):
         raise NotImplementedError('execute in base instruction is not implemented, instruction {name}'.format(name=self.class_name_and_address()))
@@ -326,6 +345,22 @@ class iadd(_instruction):
         )
 
 
+@bytecode(0x64)
+class isub(_instruction):
+    def execute(self, frame):
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        assert type(value1) is int
+        assert type(value2) is int
+        value = value1 - value2
+        frame.operand_stack.append(value)
+        logging.debug(
+            'Instruction {na}: Subtract value1 and value2, push {v} onto operand stack'.format(
+                na=self.class_name_and_address(),
+                v=value
+            )
+        )
+
 @bytecode(0x68)
 class imul(_instruction):
     def execute(self, frame):
@@ -337,6 +372,25 @@ class imul(_instruction):
         frame.operand_stack.append(value)
         logging.debug(
             'Instruction {na}: multiply value1 and value2, push {v} onto operand stack'.format(
+                na=self.class_name_and_address(),
+                v=value
+            )
+        )
+
+
+@bytecode(0x6c)
+class idiv(_instruction):
+    def execute(self, frame):
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        assert type(value1) is int
+        assert type(value2) is int
+        if value2 == 0:
+            raise NotImplementedError('Exception have not implemented. Should through ArithmeticException')
+        value = value1 // value2
+        frame.operand_stack.append(value)
+        logging.debug(
+            'Instruction {na}: Divide value1 and value2, push {v} onto operand stack'.format(
                 na=self.class_name_and_address(),
                 v=value
             )
@@ -388,9 +442,24 @@ class goto(_instruction):
 @bytecode(0xb1)
 class instruction_return(_instruction):
     def execute(self, frame):
+        self.method_return = True
         logging.debug(
             'Instruction {na}: void return'.format(
                 na=self.class_name_and_address()
+            )
+        )
+
+
+@bytecode(0xac)
+class ireturn(_instruction):
+    def execute(self, frame):
+        self.method_return = True
+        self.return_value = frame.operand_stack.pop()
+        assert type(self.return_value) is int, 'ireturn, but get value from operand in type {t}'.format(type(self.return_value))
+        logging.debug(
+            'Instruction {na}: return value {v}'.format(
+                na=self.class_name_and_address(),
+                v=self.return_value
             )
         )
 
