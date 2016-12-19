@@ -1,4 +1,7 @@
 import logging
+from lib import constant_pool
+from lib import run_time_data
+from lib import descriptor
 
 BYTECODE = {}
 
@@ -13,8 +16,28 @@ def bytecode(code):
 class _instruction(object):
     def __init__(self, address):
         self.address = address
+        # For method internal loop
         self.need_jump = False
         self.jump_to_address = None
+        # For call other method
+        self.invoke_method = False
+        self.invoke_class_name = None
+        self.invoke_method_name = None
+        self.invoke_parameter_types = []
+        self.invoke_parameters = []
+        self.invoke_return = []
+
+    def init_jump(self):
+        self.need_jump = False
+        self.jump_to_address = None
+
+    def init_invoke_method(self):
+        self.invoke_method = False
+        self.invoke_class_name = None
+        self.invoke_method_name = None
+        self.invoke_parameter_types = []
+        self.invoke_parameters = []
+        self.invoke_return = []
 
     def len_of_operand(self):
         return 0
@@ -23,10 +46,13 @@ class _instruction(object):
         pass
 
     def class_name_and_address(self):
-        return '{name} ({address})'.format(name=type(self).__name__, address=self.address)
+        return '{name} (addr:{address})'.format(name=type(self).__name__, address=self.address)
 
     def jump(self):
         return self.need_jump, self.jump_to_address
+
+    def execute(self, frame):
+        raise NotImplementedError('execute in base instruction is not implemented, instruction {name}'.format(name=self.class_name_and_address()))
 
 
 class iconst_i(_instruction):
@@ -230,8 +256,7 @@ class if_icmpcond(_instruction):
         self.offset = int.from_bytes(operand_bytes, byteorder='big', signed=True)
 
     def execute(self, frame):
-        self.need_jump = False
-        self.jump_to_address = None
+        self.init_jump()
         value2 = frame.operand_stack.pop()
         value1 = frame.operand_stack.pop()
         if self.cmp(value1, value2):
@@ -368,3 +393,39 @@ class instruction_return(_instruction):
                 na=self.class_name_and_address()
             )
         )
+
+
+@bytecode(0xb8)
+class invokestatic(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        self.init_invoke_method()
+        method_ref = frame.class_constant_pool[self.index]
+        assert type(method_ref) in (constant_pool.ConstantMethodref, constant_pool.ConstantInterfaceMethodref)
+        class_name = method_ref.get_class(frame.class_constant_pool)
+        method_name, method_describ = method_ref.get_method(frame.class_constant_pool)
+        parameters, rt = descriptor.parse_method_descriptor(method_describ)
+        klass = run_time_data.method_area[class_name]
+        method = klass.find_method(method_name)
+        assert not method.access_flags.native(), 'Not support native method yet.'
+        assert not method.access_flags.synchronized(), 'Not support synchronized method yet.'
+        logging.debug(
+            'Instruction {na}: {kl}:{me}'.format(
+                na=self.class_name_and_address(),
+                kl=class_name,
+                me=method_name
+            )
+        )
+        self.invoke_method = True
+        self.invoke_class_name = class_name
+        self.invoke_method_name = method_name
+        self.invoke_parameter_types = parameters
+        self.invoke_return = rt
+        for _ in range(len(self.invoke_parameter_types)):
+            self.invoke_parameters.append(frame.operand_stack.pop())

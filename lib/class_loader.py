@@ -23,8 +23,7 @@ class ClassStruct(object):
         self.magic = 0
         self.minor_version = 0
         self.major_version = 0
-        self.constant_pool_count = 0
-        self.constant_pool = []
+        self.constant_pool = None
         self.access_flags = 0
         self.this_class = 0
         self.super_class = 0
@@ -37,13 +36,6 @@ class ClassStruct(object):
         self.attributes_count = 0
         self.attributes = []
 
-    def constant(self, index):
-        '''Return constant in constant_pool on given index
-        index valid from 1 to constant_pool_count - 1
-        '''
-        assert index >= 1 and index < self.constant_pool_count, 'Invalid constant index {0}'.format(index)
-        return self.constant_pool[index - 1]
-
     def name(self):
         this_class = self.constant(self.this_class)
         assert type(this_class) is constant_pool.ConstantClass, 'this_class index in constant_pool is not CONSTANT_Class_info'
@@ -53,7 +45,7 @@ class ClassStruct(object):
 
     def find_method(self, method_name):
         for method in self.methods:
-            name_const = self.constant(method.name_index)
+            name_const = self.constant_pool[method.name_index]
             assert type(name_const) is constant_pool.ConstantUtf8, 'Method {0} name_index in constant_pool is not CONSTANT_Utf8_info'.format(method_name)
             if name_const.value() == method_name:
                 return method
@@ -71,9 +63,9 @@ class ClassStruct(object):
         logging.debug('Magic number: 0x{:X}'.format(self.magic))
         logging.debug('Major version:' + str(self.major_version))
         logging.debug('Minor version:' + str(self.minor_version))
-        logging.debug('Constant count:' + str(self.constant_pool_count))
-        for index in range(self.constant_pool_count - 1):
-            self.constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index + 1))
+        logging.debug('Constant count:' + str(self.constant_pool.count))
+        for index in range(1, self.constant_pool.count):
+            self.constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index))
         self.access_flags.debug_info()
         logging.debug('This class index:' + str(self.this_class))
         logging.debug('Super class index:' + str(self.super_class))
@@ -93,22 +85,7 @@ class BootstrapClassLoader(object):
     '''Class for parse and store a JAVA class file
     '''
     def __init__(self):
-        self.magic = 0
-        self.minor_version = 0
-        self.major_version = 0
-        self.constant_pool_count = 0
-        self.constant_pool = []
-        self.access_flags = 0
-        self.this_class = 0
-        self.super_class = 0
-        self.interfaces_count = 0
-        self.interfaces = []
-        self.fields_count = 0
-        self.fields = []
-        self.methods_count = 0
-        self.methods = []
-        self.attributes_count = 0
-        self.attributes = []
+        pass
 
     def parse(self, fd):
         class_struct = ClassStruct()
@@ -116,7 +93,7 @@ class BootstrapClassLoader(object):
         assert class_struct.magic == 0xCAFEBABE, 'Magic number ({0}) in class file is wrong'.format(class_struct.magic)
         class_struct.minor_version = read_bytes.read_u2_int(fd)
         class_struct.major_version = read_bytes.read_u2_int(fd)
-        (class_struct.constant_pool_count, class_struct.constant_pool) = constant_pool.parse(fd)
+        class_struct.constant_pool = constant_pool.parse(fd)
         class_struct.access_flags = AccessFlags()
         class_struct.access_flags.parse(fd)
         class_struct.this_class = read_bytes.read_u2_int(fd)

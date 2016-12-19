@@ -13,25 +13,40 @@ class Thread(object):
         if classname not in run_time_data.method_area:
             logging.error('Could not find or load main class ' + classname)
             return
-        main_method = run_time_data.method_area[classname].find_method('main')
-        if not main_method:
-            logging.error('Could not find or load main class ' + classname)
-            return
-        logging.debug('Now we are at the entrance of main function, almost there...')
-        self.invoke_method('main', main_method)
+        self.invoke_method(classname, 'main', [], [])
         logging.debug('Thread exit')
 
-    def invoke_method(self, name, method):
-        frame = Frame()
+    def invoke_method(self, classname, funcname, param_types, params):
+        klass = run_time_data.method_area[classname]
+        method = klass.find_method(funcname)
+        if not method:
+            logging.error('Could not find method {m} in class {c}'.format(m=funcname, c=classname))
+            return
+        logging.debug('Now we are at the entrance of main function, almost there...')
+        frame = Frame(
+            run_time_data.method_area[classname],
+            method,
+            param_types,
+            params
+        )
         self.stack.append(frame)
         code = method.code()
         if not code:
             raise RuntimeError('Could not find code in method')
-        frame.local_variables = [None for _ in range(code.max_locals)]
         logging.debug('size of instructions: {0}'.format(len(code.instructions)))
         i = 0
         while i < len(code.instructions):
             code.instructions[i].execute(frame)
+            if code.instructions[i].invoke_method:
+                return_v = self.invoke_method(
+                    code.instructions[i].invoke_class_name,
+                    code.instructions[i].invoke_method_name,
+                    code.instructions[i].invoke_parameter_types,
+                    code.instructions[i].invoke_parameters
+                )
+                logging.debug('Return of call is {v}'.format(v=return_v))
+                if return_v is not None:
+                    frame.operand_stack.append(return_v)
             need_jump, to_address = code.instructions[i].jump()
             if need_jump:
                 logging.debug('Opps now a slow jump to ' + str(to_address))
@@ -43,4 +58,4 @@ class Thread(object):
             else:
                 i += 1
         self.stack.pop()
-        logging.debug('Method {name} exit'.format(name=name))
+        logging.debug('Method {name} exit'.format(name=funcname))

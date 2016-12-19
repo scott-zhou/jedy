@@ -18,19 +18,38 @@ CONSTANT_MethodType         = 16
 CONSTANT_InvokeDynamic      = 18
 
 
+class ConstantPool(object):
+    def __init__(self, constant_pool_count):
+        # index valid from 1 to constant_pool_count - 1
+        # which means the max size is constant_pool_count - 1
+        self.max_size = constant_pool_count - 1
+        self.pool = []
+
+    @property
+    def count(self):
+        return self.max_size + 1
+
+    def append(self, constant):
+        self.pool.append(constant)
+
+    def __getitem__(self, index):
+        assert index >= 1 and index <= self.max_size, 'Invalid constant index {0}'.format(index)
+        return self.pool[index - 1]
+
+
 def parse(fd):
     '''Parse constant_pool
     The constant_pool table is indexed from 1 to constant_pool_count - 1.
     Which means the actual count is constant_pool_count - 1
     '''
     count = read_bytes.read_u2_int(fd)
-    pool = []
+    pool = ConstantPool(count)
     long_or_double = False
     for _ in range(count - 1):
         constant = parse_entry(fd, long_or_double)
         long_or_double = type(constant) in (ConstantLong, ConstantDouble)
         pool.append(constant)
-    return (count, pool)
+    return pool
 
 
 def parse_entry(fd, prev_long_or_double):
@@ -95,17 +114,33 @@ class ConstantClass(GenericConstant):
         logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.name_index))
 
 
-class ConstantFieldref(GenericConstant):
-    '''The CONSTANT_Fieldref_info structure in constant_pool
+class FieldMethodInterfacemethodRef(GenericConstant):
+    '''For 3 similar structures fields, methods, and interface methods
     '''
-    def __init__(self):
-        super().__init__(CONSTANT_Fieldref)
+    def __init__(self, tag):
+        super().__init__(tag)
 
     def parse(self, fd):
         self.class_index = read_bytes.read_u2_int(fd)
         self.name_and_type_index = read_bytes.read_u2_int(fd)
-        # TODO: validate index may be either a class type or an interface type
-        # In spec 4.4.2
+
+    def get_class(self, pool):
+        class_info = pool[self.class_index]
+        class_name = pool[class_info.name_index]
+        return class_name.str_value
+
+    def get_method(self, pool):
+        name_type = pool[self.name_and_type_index]
+        method_name = pool[name_type.name_index].str_value
+        method_describ = pool[name_type.descriptor_index].str_value
+        return method_name, method_describ
+
+
+class ConstantFieldref(FieldMethodInterfacemethodRef):
+    '''The CONSTANT_Fieldref_info structure in constant_pool
+    '''
+    def __init__(self):
+        super().__init__(CONSTANT_Fieldref)
 
     def debug_info(self, prefix):
         logging.debug(
@@ -116,18 +151,15 @@ class ConstantFieldref(GenericConstant):
             str(self.name_and_type_index)
         )
 
+    def get_method(self, pool):
+        raise NotImplemented('Disable get_method function for field.')
 
-class ConstantMethodref(GenericConstant):
+
+class ConstantMethodref(FieldMethodInterfacemethodRef):
     '''The ConstantMethodref structure in constant_pool
     '''
     def __init__(self):
         super().__init__(CONSTANT_Methodref)
-
-    def parse(self, fd):
-        self.class_index = read_bytes.read_u2_int(fd)
-        self.name_and_type_index = read_bytes.read_u2_int(fd)
-        # TODO: validate index must be a class type
-        # In spec 4.4.2
 
     def debug_info(self, prefix):
         logging.debug(
@@ -139,17 +171,11 @@ class ConstantMethodref(GenericConstant):
         )
 
 
-class ConstantInterfaceMethodref(GenericConstant):
+class ConstantInterfaceMethodref(FieldMethodInterfacemethodRef):
     '''The CONSTANT_Fieldref_info structure in constant_pool
     '''
     def __init__(self):
         super().__init__(CONSTANT_InterfaceMethodref)
-
-    def parse(self, fd):
-        self.class_index = read_bytes.read_u2_int(fd)
-        self.name_and_type_index = read_bytes.read_u2_int(fd)
-        # TODO: validate index must be an interface type
-        # In spec 4.4.2
 
     def debug_info(self, prefix):
         logging.debug(

@@ -27,7 +27,7 @@ def parse(fd, class_file):
 def parse_attr(fd, class_file):
     name_index = read_bytes.read_u2_int(fd)
     length = read_bytes.read_u4_int(fd)
-    name_constant = class_file.constant(name_index)
+    name_constant = class_file.constant_pool[name_index]
     assert type(name_constant) == constant_pool.ConstantUtf8, 'Attribute name constant is not CONSTANT_Utf8_info.'
     attribute_type = {
         'ConstantValue': ConstantValueAttribute,
