@@ -49,6 +49,6 @@ if __name__ == "__main__":
     class_loader.java_library_path = args.java_library_path
     class_struct = class_loader.load_class(args.classname)
     class_struct.debug_info()
-    main_thread = thread.Thread()
+    main_thread = thread.Thread(args.classname, 'main', '([Ljava/lang/String;)V', [''])
     run_time_data.thread_pool.append(main_thread)
-    main_thread.run(args.classname)
+    main_thread.run()

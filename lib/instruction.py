@@ -4,12 +4,12 @@ from lib import constant_pool
 from lib import run_time_data
 from lib import descriptor
 
-BYTECODE = {}
+OPCODES = {}
 
 
 def bytecode(code):
     def bytecode_decorator(klass):
-        BYTECODE[code] = klass
+        OPCODES[code] = klass
         return klass
     return bytecode_decorator
 

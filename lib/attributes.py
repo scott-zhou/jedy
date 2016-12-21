@@ -66,11 +66,11 @@ class CodeAttribute(Attribute):
         self.instructions = [None for _ in range(self.code_length)]
         pos = 0
         while pos < self.code_length:
-            byte = self.code[pos]
-            if byte not in instruction.BYTECODE:
-                logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(byte, pos=pos))
+            opcode = self.code[pos]
+            if opcode not in instruction.OPCODES:
+                logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(opcode, pos=pos))
                 break
-            inst = instruction.BYTECODE[byte](pos)
+            inst = instruction.OPCODES[opcode](pos)
             operands_start = pos + 1
             operands_end = operands_start + inst.len_of_operand()
             operands = bytes(self.code[operands_start:operands_end])

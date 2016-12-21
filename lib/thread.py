@@ -6,22 +6,35 @@ from lib import instruction
 
 
 class Thread(object):
-    def __init__(self):
-        self.stack = deque()
-        self.pc_register = None  # ? How to use it?
+    def __init__(self, class_name, method_name, method_descriptor, argv):
+        self.class_name = class_name
+        self.method_name = method_name
+        self.method_descriptor = method_descriptor
+        self.argv = argv
 
-    def run(self, classname):
-        if classname not in run_time_data.method_area:
-            logging.error('Could not find or load main class ' + classname)
+        self.stack = deque()
+        self.pc_register = 0
+
+    def run(self):
+        if self.class_name not in run_time_data.method_area:
+            logging.error('Could not find or load main class ' + self.class_name)
             return
-        self.invoke_method(classname, 'main', [], [])
+        logging.debug('Now we are at the entrance of thread function.')
+        frame, code = self.method_entrance(
+            self.class_name,
+            self.method_name,
+            [],  # Ignore the parameters for main function for now.
+            []
+        )
+        self.run_thread_method(frame, code)
+        logging.debug('Method {name} exit'.format(name=self.method_name))
         logging.debug('Thread exit')
 
-    def ops_invoke_method(self, classname, funcname, param_types, params):
-        klass = run_time_data.method_area[classname]
-        method = klass.find_method(funcname)
+    def method_entrance(self, class_name, method_name, param_types, params):
+        klass = run_time_data.method_area[class_name]
+        method = klass.find_method(method_name)
         if not method:
-            logging.error('Could not find method {m} in class {c}'.format(m=funcname, c=classname))
+            logging.error('Could not find method {m} in class {c}'.format(m=method_name, c=class_name))
             return
         frame = Frame(
             klass,
@@ -34,39 +47,35 @@ class Thread(object):
             raise RuntimeError('Could not find code in method')
         return frame, code
 
-    def invoke_method(self, classname, funcname, param_types, params):
-        logging.debug('Now we are at the entrance of main function, almost there...')
-        frame, code = self.ops_invoke_method(classname, funcname, param_types, params)
+    def run_thread_method(self, frame, code):
         self.stack.append(frame)
-        logging.debug('size of instructions: {0}'.format(len(code.instructions)))
         i = 0
         while i < code.code_length:
-            ops = code.instructions[i]
-            ops.execute(frame)
-            next_step = ops.next_step()
+            self.pc_register = i
+            instr = code.instructions[i]
+            instr.execute(frame)
+            next_step = instr.next_step()
             if next_step == instruction.NextStep.invoke_method:
-                frame.next_ops_address = i + 1 + ops.len_of_operand()  # store the next
-                frame, code = self.ops_invoke_method(
-                    ops.invoke_class_name,
-                    ops.invoke_method_name,
-                    ops.invoke_parameter_types,
-                    ops.invoke_parameters
+                frame.next_ops_address = i + 1 + instr.len_of_operand()  # store the next
+                frame, code = self.method_entrance(
+                    instr.invoke_class_name,
+                    instr.invoke_method_name,
+                    instr.invoke_parameter_types,
+                    instr.invoke_parameters
                 )
                 self.stack.append(frame)
                 i = 0
             elif next_step == instruction.NextStep.jump_to:
-                i = ops.jump_to_address
+                i = instr.jump_to_address
             elif next_step == instruction.NextStep.method_return:
                 if len(self.stack) == 1:
-                    # TODO: How to returen value?
-                    break
+                    break  # First frame is for main function, not return value
                 self.stack.pop()
                 frame = self.stack[-1]
                 code = frame.code
                 i = frame.next_ops_address
-                if ops.return_value is not None:
-                    frame.operand_stack.append(ops.return_value)
+                if instr.return_value is not None:
+                    frame.operand_stack.append(instr.return_value)
             else:
-                i = i + 1 + ops.len_of_operand()
+                i = i + 1 + instr.len_of_operand()
         self.stack.pop()
-        logging.debug('Method {name} exit'.format(name=funcname))
