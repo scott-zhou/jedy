@@ -498,3 +498,4 @@ class invokestatic(_instruction):
         self.invoke_return = rt
         for _ in range(len(self.invoke_parameter_types)):
             self.invoke_parameters.append(frame.operand_stack.pop())
+        self.invoke_parameters.reverse()
