@@ -499,3 +499,16 @@ class invokestatic(_instruction):
         for _ in range(len(self.invoke_parameter_types)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
+
+
+@bytecode(0xb2)
+class getstatic(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        logging.error('Execute getstatic havent been implemented.')

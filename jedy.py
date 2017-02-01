@@ -23,7 +23,7 @@ def parse_argument():
     return parser.parse_args()
 
 
-def init_logging(debug):
+def init_logging(debug: bool):
     fmt = '%(levelname)s: %(message)s'
     formatter = logging.Formatter(fmt)
     stdout = logging.StreamHandler(sys.stdout)

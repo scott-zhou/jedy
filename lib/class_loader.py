@@ -87,7 +87,7 @@ class BootstrapClassLoader(object):
     def __init__(self):
         pass
 
-    def parse(self, fd):
+    def parse(self, fd) -> ClassStruct:
         class_struct = ClassStruct()
         class_struct.magic = read_bytes.read_u4_int(fd)
         assert class_struct.magic == 0xCAFEBABE, 'Magic number ({0}) in class file is wrong'.format(class_struct.magic)
@@ -285,17 +285,22 @@ class Method(object):
             attr.debug_info('       -       - ')
 
 
-def parse(file_name, loader=BootstrapClassLoader):
+def parse(file_name: str, loader=BootstrapClassLoader):
     class_loader = loader()
     with open(file_name, 'rb') as java_class_file:
         class_struct = class_loader.parse(java_class_file)
     return class_struct
 
 
-def load_class(classname):
+def load_class(classname: str) -> ClassStruct:
+    """
+    :param classname: str, represent the name of class
+    :return: ClassStruct object if the class is success loaded, otherwise None
+    """
     filename = classname + '.class'
     possible_path = os.path.join(classpath, filename)
     if os.path.isfile(possible_path):
         class_struct = parse(possible_path)
         run_time_data.method_area[classname] = class_struct
         return class_struct
+    return None
