@@ -511,4 +511,19 @@ class getstatic(_instruction):
         self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
 
     def execute(self, frame):
+        field_ref = frame.class_constant_pool[self.index]
+        logging.debug(type(field_ref))
+        assert type(field_ref) is constant_pool.ConstantFieldref
+        class_name = field_ref.get_class(frame.class_constant_pool)
+        logging.debug(type(class_name))
+        name, field = field_ref.get_name_descriptor(frame.class_constant_pool)
+        field = descriptor.parse_field_descriptor(field)
+        logging.debug(name)
+        logging.debug(field)
+        logging.debug(
+            'Instruction {na}: resolute filed {name}({field}) in class {class_name}'.format(
+                na=self.class_name_and_address(),
+                **vars()
+            )
+        )
         logging.error('Execute getstatic havent been implemented.')

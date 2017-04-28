@@ -154,6 +154,13 @@ class ConstantFieldref(FieldMethodInterfacemethodRef):
     def get_method(self, pool):
         raise NotImplemented('Disable get_method function for field.')
 
+    def get_name_descriptor(self, pool):
+        name_type = pool[self.name_and_type_index]
+        assert type(name_type) is ConstantNameAndType
+        name = pool[name_type.name_index]
+        field_descriptor = pool[name_type.descriptor_index]
+        return name.value(), field_descriptor.value()
+
 
 class ConstantMethodref(FieldMethodInterfacemethodRef):
     '''The ConstantMethodref structure in constant_pool
