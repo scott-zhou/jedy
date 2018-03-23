@@ -65,17 +65,27 @@ class ClassStruct(object):
         logging.debug('Minor version:' + str(self.minor_version))
         logging.debug('Constant count:' + str(self.constant_pool.count))
         for index in range(1, self.constant_pool.count):
-            self.constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index))
+            self.constant_pool[index].debug_info('\tCONSTANT_POOL[{0}] ->'.format(index), self)
         self.access_flags.debug_info()
-        logging.debug('This class index:' + str(self.this_class))
-        logging.debug('Super class index:' + str(self.super_class))
+        logging.debug(
+            'This class index: {0} ({1})'.format(
+                str(self.this_class),
+                self.constant_pool.get_constant_class_name(self.this_class)
+            )
+        )
+        logging.debug(
+            'Super class index: {0} ({1})'.format(
+                str(self.super_class),
+                self.constant_pool.get_constant_class_name(self.super_class)
+            )
+        )
         logging.debug('Interface count:' + str(self.interfaces_count))
         for interface in self.interfaces:
             logging.debug('\tinterface index in constant_pool:' + str(interface))
         logging.debug('Fields count:' + str(self.fields_count))
         logging.debug('Methods count:' + str(self.methods_count))
         for method in self.methods:
-            method.debug_info()
+            method.debug_info(self)
         logging.debug('Attributes count:' + str(self.attributes_count))
         for attr in self.attributes:
             attr.debug_info()
@@ -276,9 +286,19 @@ class Method(object):
                 return attr
         return None
 
-    def debug_info(self):
-        logging.debug('Method - name index:' + str(self.name_index))
-        logging.debug('       - descriptor index:' + str(self.descriptor_index))
+    def debug_info(self, class_struct):
+        name = class_struct.constant_pool[self.name_index].value()
+        descriptor = class_struct.constant_pool[self.descriptor_index].value()
+        logging.debug(
+            'Method - name index:' +
+            str(self.name_index) +
+            ' ("{0}")'.format(name)
+        )
+        logging.debug(
+            '       - descriptor index:' +
+            str(self.descriptor_index) +
+            ' ("{0}")'.format(descriptor)
+        )
         self.access_flags.debug_info('       - ')
         logging.debug('       - attributes count:' + str(self.attributes_count))
         for attr in self.attributes:

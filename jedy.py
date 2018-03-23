@@ -2,8 +2,8 @@
 
 import argparse
 import logging
-import sys
 import os
+import sys
 from lib import class_loader
 from lib import run_time_data
 from lib import thread

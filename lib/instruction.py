@@ -89,19 +89,6 @@ class iconst_i(_instruction):
         )
 
 
-@bytecode(0x10)
-class bipush(iconst_i):
-    def __init__(self, address):
-        super().__init__(address)
-
-    def len_of_operand(self):
-        return 1
-
-    def put_operands(self, operand_bytes):
-        assert type(operand_bytes[0]) is int
-        self.i = operand_bytes[0]
-
-
 @bytecode(0x02)
 class iconst_m1(iconst_i):
     def __init__(self, address):
@@ -144,6 +131,19 @@ class iconst_5(iconst_i):
         super().__init__(address, 5)
 
 
+@bytecode(0x10)
+class bipush(iconst_i):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 1
+
+    def put_operands(self, operand_bytes):
+        assert type(operand_bytes[0]) is int
+        self.i = operand_bytes[0]
+
+
 @bytecode(0x11)
 class sipush(iconst_i):
     def __init__(self, address):
@@ -155,61 +155,6 @@ class sipush(iconst_i):
     def put_operands(self, operand_bytes):
         assert len(operand_bytes) == 2
         self.i = int.from_bytes(operand_bytes, byteorder='big', signed=False)
-
-
-class istore_n(_instruction):
-    def __init__(self, address, n=0):
-        super().__init__(address)
-        self.n = n
-
-    def execute(self, frame):
-        i = frame.operand_stack.pop()
-        assert type(i) is int
-        frame.local_variables[self.n] = i
-        logging.debug(
-            'Instruction {na}: pop {i} from operand stack and set to local variable {n}'.format(
-                na=self.class_name_and_address(),
-                i=i,
-                n=self.n
-            )
-        )
-
-
-@bytecode(0x36)
-class istore(istore_n):
-    def __init__(self, address):
-        super().__init__(address)
-
-    def len_of_operand(self):
-        return 1
-
-    def put_operands(self, operand_bytes):
-        assert type(operand_bytes[0]) is int
-        self.n = operand_bytes[0]
-
-
-@bytecode(0x3b)
-class istore_0(istore_n):
-    def __init__(self, address):
-        super().__init__(address, 0)
-
-
-@bytecode(0x3c)
-class istore_1(istore_n):
-    def __init__(self, address):
-        super().__init__(address, 1)
-
-
-@bytecode(0x3d)
-class istore_2(istore_n):
-    def __init__(self, address):
-        super().__init__(address, 2)
-
-
-@bytecode(0x3e)
-class istore_3(istore_n):
-    def __init__(self, address):
-        super().__init__(address, 3)
 
 
 class iload_n(_instruction):
@@ -266,66 +211,114 @@ class iload_3(iload_n):
         super().__init__(address, 3)
 
 
-class if_icmpcond(_instruction):
-    def len_of_operand(self):
-        return 2
-
-    def put_operands(self, operand_bytes):
-        assert len(operand_bytes) == 2
-        self.offset = int.from_bytes(operand_bytes, byteorder='big', signed=True)
+class aload_n(_instruction):
+    def __init__(self, address, n=0):
+        super().__init__(address)
+        self.n = n
 
     def execute(self, frame):
-        self.init_jump()
-        value2 = frame.operand_stack.pop()
-        value1 = frame.operand_stack.pop()
-        if self.cmp(value1, value2):
-            self.need_jump = True
-            self.jump_to_address = self.address + self.offset
+        # assert type(frame.local_variables[self.n]) is what
+        # TODO: assert the type is reference, then the problem is how to represent a reference?
+        frame.operand_stack.append(frame.local_variables[self.n])
         logging.debug(
-            'Instruction {na}: compare value1 and value2 from stack, result need {j}'.format(
+            'Instruction {na}: push {a} onto operand stack from local variable {n}'.format(
                 na=self.class_name_and_address(),
-                j='jump to address {0}'.format(self.jump_to_address) if self.need_jump else 'not jump'
+                a=frame.local_variables[self.n],
+                n=self.n
             )
         )
 
-    def cmp(self, value1, value2):
-        raise NotImplementedError('cmp function in if_icmpcond will not be implement.')
+
+@bytecode(0x25)
+class aload(aload_n):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 1
+
+    def put_operands(self, operand_bytes):
+        assert type(operand_bytes[0]) is int
+        self.n = operand_bytes[0]
 
 
-@bytecode(0x9f)
-class if_icmpeq(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 == value2
+@bytecode(0x2a)
+class aload_0(aload_n):
+    def __init__(self, address):
+        super().__init__(address, 0)
 
 
-@bytecode(0xa0)
-class if_icmpne(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 != value2
+@bytecode(0x2b)
+class aload_1(aload_n):
+    def __init__(self, address):
+        super().__init__(address, 1)
 
 
-@bytecode(0xa1)
-class if_icmplt(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 < value2
+@bytecode(0x2c)
+class aload_2(aload_n):
+    def __init__(self, address):
+        super().__init__(address, 2)
 
 
-@bytecode(0xa2)
-class if_icmpge(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 >= value2
+@bytecode(0x2d)
+class aload_3(aload_n):
+    def __init__(self, address):
+        super().__init__(address, 3)
 
 
-@bytecode(0xa3)
-class if_icmpgt(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 > value2
+class istore_n(_instruction):
+    def __init__(self, address, n=0):
+        super().__init__(address)
+        self.n = n
+
+    def execute(self, frame):
+        i = frame.operand_stack.pop()
+        assert type(i) is int
+        frame.local_variables[self.n] = i
+        logging.debug(
+            'Instruction {na}: pop {i} from operand stack and set to local variable {n}'.format(
+                na=self.class_name_and_address(),
+                i=i,
+                n=self.n
+            )
+        )
 
 
-@bytecode(0xa4)
-class if_icmple(if_icmpcond):
-    def cmp(self, value1, value2):
-        return value1 <= value2
+@bytecode(0x36)
+class istore(istore_n):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 1
+
+    def put_operands(self, operand_bytes):
+        assert type(operand_bytes[0]) is int
+        self.n = operand_bytes[0]
+
+
+@bytecode(0x3b)
+class istore_0(istore_n):
+    def __init__(self, address):
+        super().__init__(address, 0)
+
+
+@bytecode(0x3c)
+class istore_1(istore_n):
+    def __init__(self, address):
+        super().__init__(address, 1)
+
+
+@bytecode(0x3d)
+class istore_2(istore_n):
+    def __init__(self, address):
+        super().__init__(address, 2)
+
+
+@bytecode(0x3e)
+class istore_3(istore_n):
+    def __init__(self, address):
+        super().__init__(address, 3)
 
 
 @bytecode(0x60)
@@ -419,6 +412,68 @@ class iinc(_instruction):
         )
 
 
+class if_icmpcond(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.offset = int.from_bytes(operand_bytes, byteorder='big', signed=True)
+
+    def execute(self, frame):
+        self.init_jump()
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        if self.cmp(value1, value2):
+            self.need_jump = True
+            self.jump_to_address = self.address + self.offset
+        logging.debug(
+            'Instruction {na}: compare value1 and value2 from stack, result need {j}'.format(
+                na=self.class_name_and_address(),
+                j='jump to address {0}'.format(self.jump_to_address) if self.need_jump else 'not jump'
+            )
+        )
+
+    def cmp(self, value1, value2):
+        raise NotImplementedError('cmp function in if_icmpcond will not be implement.')
+
+
+@bytecode(0x9f)
+class if_icmpeq(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 == value2
+
+
+@bytecode(0xa0)
+class if_icmpne(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 != value2
+
+
+@bytecode(0xa1)
+class if_icmplt(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 < value2
+
+
+@bytecode(0xa2)
+class if_icmpge(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 >= value2
+
+
+@bytecode(0xa3)
+class if_icmpgt(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 > value2
+
+
+@bytecode(0xa4)
+class if_icmple(if_icmpcond):
+    def cmp(self, value1, value2):
+        return value1 <= value2
+
+
 @bytecode(0xa7)
 class goto(_instruction):
     def len_of_operand(self):
@@ -439,17 +494,6 @@ class goto(_instruction):
         )
 
 
-@bytecode(0xb1)
-class instruction_return(_instruction):
-    def execute(self, frame):
-        self.method_return = True
-        logging.debug(
-            'Instruction {na}: void return'.format(
-                na=self.class_name_and_address()
-            )
-        )
-
-
 @bytecode(0xac)
 class ireturn(_instruction):
     def execute(self, frame):
@@ -462,6 +506,45 @@ class ireturn(_instruction):
                 v=self.return_value
             )
         )
+
+
+@bytecode(0xb1)
+class instruction_return(_instruction):
+    def execute(self, frame):
+        self.method_return = True
+        logging.debug(
+            'Instruction {na}: void return'.format(
+                na=self.class_name_and_address()
+            )
+        )
+
+
+@bytecode(0xb2)
+class getstatic(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        field_ref = frame.class_constant_pool[self.index]
+        logging.debug(type(field_ref))
+        assert type(field_ref) is constant_pool.ConstantFieldref
+        class_name = field_ref.get_class(frame.class_constant_pool)
+        logging.debug(type(class_name))
+        name, field = field_ref.get_name_descriptor(frame.class_constant_pool)
+        field = descriptor.parse_field_descriptor(field)
+        logging.debug(name)
+        logging.debug(field)
+        logging.debug(
+            'Instruction {na}: resolute filed {name}({field}) in class {class_name}'.format(
+                na=self.class_name_and_address(),
+                **vars()
+            )
+        )
+        logging.error('Execute getstatic havent been implemented.')
 
 
 @bytecode(0xb8)
@@ -500,30 +583,3 @@ class invokestatic(_instruction):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
 
-
-@bytecode(0xb2)
-class getstatic(_instruction):
-    def len_of_operand(self):
-        return 2
-
-    def put_operands(self, operand_bytes):
-        assert len(operand_bytes) == 2
-        self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
-
-    def execute(self, frame):
-        field_ref = frame.class_constant_pool[self.index]
-        logging.debug(type(field_ref))
-        assert type(field_ref) is constant_pool.ConstantFieldref
-        class_name = field_ref.get_class(frame.class_constant_pool)
-        logging.debug(type(class_name))
-        name, field = field_ref.get_name_descriptor(frame.class_constant_pool)
-        field = descriptor.parse_field_descriptor(field)
-        logging.debug(name)
-        logging.debug(field)
-        logging.debug(
-            'Instruction {na}: resolute filed {name}({field}) in class {class_name}'.format(
-                na=self.class_name_and_address(),
-                **vars()
-            )
-        )
-        logging.error('Execute getstatic havent been implemented.')

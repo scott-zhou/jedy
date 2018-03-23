@@ -36,6 +36,9 @@ class ConstantPool(object):
         assert index >= 1 and index <= self.max_size, 'Invalid constant index {0}'.format(index)
         return self.pool[index - 1]
 
+    def get_constant_class_name(self, index):
+        return self[self[index].name_index].value()
+
 
 def parse(fd):
     '''Parse constant_pool
@@ -94,7 +97,7 @@ class GenericConstant(object):
     def unuse(self):
         self.usable = False
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         pass
 
 
@@ -110,8 +113,9 @@ class ConstantClass(GenericConstant):
         # TODO: check index availability after pool parsed
         # In spec 4.4.1. The CONSTANT_Class_info Structure
 
-    def debug_info(self, prefix):
-        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.name_index))
+    def debug_info(self, prefix, class_struct):
+        class_name = class_struct.constant_pool[self.name_index].value()
+        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.name_index) + ' ("{0}")'.format(class_name))
 
 
 class FieldMethodInterfacemethodRef(GenericConstant):
@@ -142,7 +146,7 @@ class ConstantFieldref(FieldMethodInterfacemethodRef):
     def __init__(self):
         super().__init__(CONSTANT_Fieldref)
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Fieldref_info - class_index:' +
@@ -168,7 +172,7 @@ class ConstantMethodref(FieldMethodInterfacemethodRef):
     def __init__(self):
         super().__init__(CONSTANT_Methodref)
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'ConstantMethodref - class_index:' +
@@ -184,7 +188,7 @@ class ConstantInterfaceMethodref(FieldMethodInterfacemethodRef):
     def __init__(self):
         super().__init__(CONSTANT_InterfaceMethodref)
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'ConstantInterfaceMethodref - class_index:' +
@@ -206,7 +210,7 @@ class ConstantString(GenericConstant):
         # TODO: validate index entry must be a CONSTANT_Utf8_info structure
         # In spec 4.4.3
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_String_info - string_index:' +
@@ -224,7 +228,7 @@ class ConstantInteger(GenericConstant):
         self.value = read_bytes.read_u4_int(fd)
         # In spec it's bytes, use veriable name __value.
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Integer_info - value:' +
@@ -242,7 +246,7 @@ class ConstantFloat(GenericConstant):
         self.value = read_bytes.read_u4_float(fd)
         # In spec it's bytes, use veriable name __value.
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Float_info - value:' +
@@ -260,7 +264,7 @@ class ConstantLong(GenericConstant):
     def parse(self, fd):
         self.value = read_bytes.read_u8_int(fd)
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Long_info - value:' +
@@ -278,7 +282,7 @@ class ConstantDouble(GenericConstant):
     def parse(self, fd):
         self.value = read_bytes.read_u8_float(fd)
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Double_info - value:' +
@@ -299,13 +303,17 @@ class ConstantNameAndType(GenericConstant):
         # TODO: validate indexs in constant_pool after parse all
         # In spec 4.4.6
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
+        name = class_struct.constant_pool[self.name_index].value()
+        descript = class_struct.constant_pool[self.descriptor_index].value()
         logging.debug(
             prefix +
             'CONSTANT_NameAndType_info - name_index:' +
             str(self.name_index) +
+            ' ("{0}")'.format(name) +
             '; descriptor_index:' +
-            str(self.descriptor_index)
+            str(self.descriptor_index) +
+            ' ("{0}")'.format(descript)
         )
 
 
@@ -322,7 +330,7 @@ class ConstantUtf8(GenericConstant):
     def value(self):
         return self.str_value
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_Utf8_info - string value:' +
@@ -343,7 +351,7 @@ class ConstantMethodHandle(GenericConstant):
         # TODO: validate type and index after parse all
         # In spec 4.6.8
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_MethodHandle_info - reference_kind:' +
@@ -365,7 +373,7 @@ class ConstantMethodType(GenericConstant):
         # TODO: validate  index after parse all
         # In spec 4.6.9
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_MethodType_info - descriptor_index:' +
@@ -387,7 +395,7 @@ class ConstantInvokeDynamic(GenericConstant):
         # TODO: validate  index after parse all
         # In spec 4.6.10
 
-    def debug_info(self, prefix):
+    def debug_info(self, prefix, class_struct):
         logging.debug(
             prefix +
             'CONSTANT_InvokeDynamic_info - bootstrap_method_attr_index:' +

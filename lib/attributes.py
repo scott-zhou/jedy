@@ -1,7 +1,7 @@
 import logging
-from lib import read_bytes
 from lib import constant_pool
 from lib import instruction
+from lib import read_bytes
 
 
 SAME = 0
