@@ -47,8 +47,11 @@ if __name__ == "__main__":
         class_loader.classpath = os.path.dirname(os.path.realpath(__file__))
     class_loader.java_home = args.java_home
     class_loader.java_library_path = args.java_library_path
+    logging.debug(
+        f'Loading class {args.classname} from path {class_loader.classpath}')
     class_struct = class_loader.load_class(args.classname)
     class_struct.debug_info()
-    main_thread = thread.Thread(args.classname, 'main', '([Ljava/lang/String;)V', [''])
+    main_thread = thread.Thread(
+        args.classname, 'main', '([Ljava/lang/String;)V', [''])
     run_time_data.thread_pool.append(main_thread)
     main_thread.run()
