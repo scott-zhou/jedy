@@ -2,20 +2,20 @@ import logging
 from lib import read_bytes
 
 
-CONSTANT_Class     = 7
-CONSTANT_Fieldref  = 9
+CONSTANT_Class = 7
+CONSTANT_Fieldref = 9
 CONSTANT_Methodref = 10
 CONSTANT_InterfaceMethodref = 11
-CONSTANT_String    = 8
-CONSTANT_Integer   = 3
-CONSTANT_Float     = 4
-CONSTANT_Long      = 5
-CONSTANT_Double    = 6
-CONSTANT_NameAndType        = 12
-CONSTANT_Utf8      = 1
-CONSTANT_MethodHandle       = 15
-CONSTANT_MethodType         = 16
-CONSTANT_InvokeDynamic      = 18
+CONSTANT_String = 8
+CONSTANT_Integer = 3
+CONSTANT_Float = 4
+CONSTANT_Long = 5
+CONSTANT_Double = 6
+CONSTANT_NameAndType = 12
+CONSTANT_Utf8 = 1
+CONSTANT_MethodHandle = 15
+CONSTANT_MethodType = 16
+CONSTANT_InvokeDynamic = 18
 
 
 class ConstantPool(object):
@@ -33,7 +33,8 @@ class ConstantPool(object):
         self.pool.append(constant)
 
     def __getitem__(self, index):
-        assert index >= 1 and index <= self.max_size, 'Invalid constant index {0}'.format(index)
+        assert index >= 1 and index <= self.max_size,\
+            'Invalid constant index {0}'.format(index)
         return self.pool[index - 1]
 
     def get_constant_class_name(self, index):
@@ -60,22 +61,7 @@ def parse_entry(fd, prev_long_or_double):
     if previous constant is long or double.
     '''
     tag = read_bytes.read_u1_int(fd)
-    constant_type = {
-        CONSTANT_Class: ConstantClass,
-        CONSTANT_Fieldref: ConstantFieldref,
-        CONSTANT_Methodref: ConstantMethodref,
-        CONSTANT_InterfaceMethodref: ConstantInterfaceMethodref,
-        CONSTANT_String: ConstantString,
-        CONSTANT_Integer: ConstantInteger,
-        CONSTANT_Float: ConstantFloat,
-        CONSTANT_Long: ConstantLong,
-        CONSTANT_Double: ConstantDouble,
-        CONSTANT_NameAndType: ConstantNameAndType,
-        CONSTANT_Utf8: ConstantUtf8,
-        CONSTANT_MethodHandle: ConstantMethodHandle,
-        CONSTANT_MethodType: ConstantMethodType,
-        CONSTANT_InvokeDynamic: ConstantInvokeDynamic
-    }.get(tag, None)
+    constant_type = constant_type_tag_to_class.get(tag, None)
     if not constant_type:
         raise ValueError(
             'Constant tag {0} is not valid.'.format(tag)
@@ -90,6 +76,7 @@ def parse_entry(fd, prev_long_or_double):
 class GenericConstant(object):
     '''Base type for elements in constant_pool
     '''
+
     def __init__(self, tag):
         self.tag = tag
         self.usable = True
@@ -105,6 +92,7 @@ class ConstantClass(GenericConstant):
     '''The CONSTANT_Class_info structure in constant_pool,
     used to represent a class or an interface.
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Class)
 
@@ -115,12 +103,14 @@ class ConstantClass(GenericConstant):
 
     def debug_info(self, prefix, class_struct):
         class_name = class_struct.constant_pool[self.name_index].value()
-        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' + str(self.name_index) + ' ("{0}")'.format(class_name))
+        logging.debug(prefix + 'CONSTANT_Class_info - name_index:' +
+                      str(self.name_index) + ' ("{0}")'.format(class_name))
 
 
 class FieldMethodInterfacemethodRef(GenericConstant):
     '''For 3 similar structures fields, methods, and interface methods
     '''
+
     def __init__(self, tag):
         super().__init__(tag)
 
@@ -143,6 +133,7 @@ class FieldMethodInterfacemethodRef(GenericConstant):
 class ConstantFieldref(FieldMethodInterfacemethodRef):
     '''The CONSTANT_Fieldref_info structure in constant_pool
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Fieldref)
 
@@ -169,6 +160,7 @@ class ConstantFieldref(FieldMethodInterfacemethodRef):
 class ConstantMethodref(FieldMethodInterfacemethodRef):
     '''The ConstantMethodref structure in constant_pool
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Methodref)
 
@@ -185,6 +177,7 @@ class ConstantMethodref(FieldMethodInterfacemethodRef):
 class ConstantInterfaceMethodref(FieldMethodInterfacemethodRef):
     '''The CONSTANT_Fieldref_info structure in constant_pool
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_InterfaceMethodref)
 
@@ -202,6 +195,7 @@ class ConstantString(GenericConstant):
     '''The CONSTANT_String_info Structure in constant_pool,
     used to represent constant objects of the type String
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_String)
 
@@ -221,6 +215,7 @@ class ConstantString(GenericConstant):
 class ConstantInteger(GenericConstant):
     '''The CONSTANT_Integer_info Structure in constant_pool.
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Integer)
 
@@ -239,6 +234,7 @@ class ConstantInteger(GenericConstant):
 class ConstantFloat(GenericConstant):
     '''The CONSTANT_Float_info Structures in constant_pool.
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Float)
 
@@ -258,6 +254,7 @@ class ConstantLong(GenericConstant):
     '''The CONSTANT_Long_info represent 8-byte numeric long constants
     In python, use integer for long long C type
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Long)
 
@@ -276,6 +273,7 @@ class ConstantDouble(GenericConstant):
     '''The CONSTANT_Double_info represent 8-byte numeric double constants
     In python, use float for double C type
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Double)
 
@@ -294,6 +292,7 @@ class ConstantNameAndType(GenericConstant):
     '''The CONSTANT_NameAndType_info structure is used to represent a field
     or method, without indicating which class or interface type it belongs to.
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_NameAndType)
 
@@ -320,6 +319,7 @@ class ConstantNameAndType(GenericConstant):
 class ConstantUtf8(GenericConstant):
     '''The CONSTANT_Utf8_info structure is used to represent constant string values
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_Utf8)
 
@@ -342,6 +342,7 @@ class ConstantMethodHandle(GenericConstant):
     '''The CONSTANT_MethodHandle_info structure is used to represent
     a method handle
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_MethodHandle)
 
@@ -365,6 +366,7 @@ class ConstantMethodType(GenericConstant):
     '''The CONSTANT_MethodType_info structure is used to represent
     a method type
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_MethodType)
 
@@ -386,6 +388,7 @@ class ConstantInvokeDynamic(GenericConstant):
     invokedynamic instruction
     to specify a bootstrap method
     '''
+
     def __init__(self):
         super().__init__(CONSTANT_InvokeDynamic)
 
@@ -403,3 +406,21 @@ class ConstantInvokeDynamic(GenericConstant):
             '; name_and_type_index:' +
             str(self.name_and_type_index)
         )
+
+
+constant_type_tag_to_class = {
+    CONSTANT_Class: ConstantClass,
+    CONSTANT_Fieldref: ConstantFieldref,
+    CONSTANT_Methodref: ConstantMethodref,
+    CONSTANT_InterfaceMethodref: ConstantInterfaceMethodref,
+    CONSTANT_String: ConstantString,
+    CONSTANT_Integer: ConstantInteger,
+    CONSTANT_Float: ConstantFloat,
+    CONSTANT_Long: ConstantLong,
+    CONSTANT_Double: ConstantDouble,
+    CONSTANT_NameAndType: ConstantNameAndType,
+    CONSTANT_Utf8: ConstantUtf8,
+    CONSTANT_MethodHandle: ConstantMethodHandle,
+    CONSTANT_MethodType: ConstantMethodType,
+    CONSTANT_InvokeDynamic: ConstantInvokeDynamic
+}
