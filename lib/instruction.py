@@ -554,19 +554,26 @@ class invokestatic(_instruction):
 
     def put_operands(self, operand_bytes):
         assert len(operand_bytes) == 2
-        self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
+        self.index = int.from_bytes(
+            operand_bytes, byteorder='big', signed=False)
 
     def execute(self, frame):
         self.init_invoke_method()
         method_ref = frame.class_constant_pool[self.index]
-        assert type(method_ref) in (constant_pool.ConstantMethodref, constant_pool.ConstantInterfaceMethodref)
+        assert type(method_ref) in (
+            constant_pool.ConstantMethodref,
+            constant_pool.ConstantInterfaceMethodref
+        )
         class_name = method_ref.get_class(frame.class_constant_pool)
-        method_name, method_describ = method_ref.get_method(frame.class_constant_pool)
+        method_name, method_describ = method_ref.get_method(
+            frame.class_constant_pool)
         parameters, rt = descriptor.parse_method_descriptor(method_describ)
         klass = run_time_data.method_area[class_name]
         method = klass.find_method(method_name)
-        assert not method.access_flags.native(), 'Not support native method yet.'
-        assert not method.access_flags.synchronized(), 'Not support synchronized method yet.'
+        assert not method.access_flags.native(),\
+            'Not support native method yet.'
+        assert not method.access_flags.synchronized(),\
+            'Not support synchronized method yet.'
         logging.debug(
             'Instruction {na}: {kl}:{me}'.format(
                 na=self.class_name_and_address(),
@@ -582,4 +589,3 @@ class invokestatic(_instruction):
         for _ in range(len(self.invoke_parameter_types)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
-

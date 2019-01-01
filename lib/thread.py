@@ -17,7 +17,8 @@ class Thread(object):
 
     def run(self):
         if self.class_name not in run_time_data.method_area:
-            logging.error('Could not find or load main class ' + self.class_name)
+            logging.error(
+                f'Could not find or load main class {self.class_name}')
             return
         logging.debug('Now we are at the entrance of thread function.')
         frame, code = self.method_entrance(
@@ -34,7 +35,8 @@ class Thread(object):
         klass = run_time_data.method_area[class_name]
         method = klass.find_method(method_name)
         if not method:
-            logging.error('Could not find method {m} in class {c}'.format(m=method_name, c=class_name))
+            logging.error(
+                f'Could not find method {method_name} in class {class_name}')
             return
         frame = Frame(
             klass,
@@ -56,7 +58,8 @@ class Thread(object):
             instr.execute(frame)
             next_step = instr.next_step()
             if next_step == instruction.NextStep.invoke_method:
-                frame.next_ops_address = i + 1 + instr.len_of_operand()  # store the next
+                # store the next
+                frame.next_ops_address = i + 1 + instr.len_of_operand()
                 frame, code = self.method_entrance(
                     instr.invoke_class_name,
                     instr.invoke_method_name,
