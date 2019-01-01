@@ -67,3 +67,37 @@ class TestBootstrapClassLoader(TestCase):
                 expected_class[index], None)
             self.assertIs(
                 constant_type, type(self.class_struct.constant_pool[index]))
+
+    def test_class_access_flags(self):
+        self.assertIsNotNone(self.class_struct, 'Load class fail')
+        self.assertTrue(self.class_struct.access_flags.public())
+        self.assertFalse(self.class_struct.access_flags.final())
+        self.assertTrue(self.class_struct.access_flags.super())
+        self.assertFalse(self.class_struct.access_flags.interface())
+        self.assertFalse(self.class_struct.access_flags.abstract())
+        self.assertFalse(self.class_struct.access_flags.synthetic())
+        self.assertFalse(self.class_struct.access_flags.annotation())
+        self.assertFalse(self.class_struct.access_flags.enum())
+
+    def test_this_class_name(self):
+        self.assertEqual(
+            self.class_struct.constant_pool.get_constant_class_name(
+                self.class_struct.this_class),
+            'LocalStaticFunc'
+        )
+
+    def test_super_class_name(self):
+        self.assertEqual(
+            self.class_struct.constant_pool.get_constant_class_name(
+                self.class_struct.super_class),
+            'java/lang/Object'
+        )
+
+    def test_interface_counter(self):
+        self.assertEqual(self.class_struct.interfaces_count, 0)
+
+    def test_field_counter(self):
+        self.assertEqual(self.class_struct.fields_count, 0)
+
+    def test_method_counter(self):
+        self.assertEqual(self.class_struct.methods_count, 3)
