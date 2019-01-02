@@ -529,15 +529,13 @@ class getstatic(_instruction):
         self.index = int.from_bytes(operand_bytes, byteorder='big', signed=False)
 
     def execute(self, frame):
-        field_ref = frame.class_constant_pool[self.index]
+        field_ref = frame.klass.constant_pool[self.index]
         logging.debug(type(field_ref))
         assert type(field_ref) is constant_pool.ConstantFieldref
-        class_name = field_ref.get_class(frame.class_constant_pool)
+        class_name = field_ref.get_class(frame.klass.constant_pool)
         logging.debug(type(class_name))
-        name, field = field_ref.get_name_descriptor(frame.class_constant_pool)
+        name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
         field = descriptor.parse_field_descriptor(field)
-        logging.debug(name)
-        logging.debug(field)
         logging.debug(
             'Instruction {na}: resolute filed {name}({field}) in class {class_name}'.format(
                 na=self.class_name_and_address(),
@@ -545,6 +543,69 @@ class getstatic(_instruction):
             )
         )
         logging.error('Execute getstatic havent been implemented.')
+
+
+@bytecode(0xb7)
+class invokespecial(_instruction):
+    '''Currently only for call super class constructioin
+    '''
+
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(
+            operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        self.init_invoke_method()
+        method_ref = frame.klass.constant_pool[self.index]
+        assert type(method_ref) in (
+            constant_pool.ConstantMethodref,
+            constant_pool.ConstantInterfaceMethodref
+        )
+        class_name = method_ref.get_class(frame.klass.constant_pool)
+        method_name, method_describ = method_ref.get_method(
+            frame.klass.constant_pool)
+        parameters, rt = descriptor.parse_method_descriptor(method_describ)
+        # Find klass is not correct implemented now, but enough for invoke
+        # super class construction
+        klass = run_time_data.method_area[class_name]
+        method = klass.find_method(method_name)
+        is_initialization_method = method_name in ['<init>', '<clinit>']
+        super_class_name = frame.klass.constant_pool[
+            frame.klass.constant_pool[frame.klass.super_class].name_index
+        ]
+        is_super_class = type(method_ref) is constant_pool.ConstantMethodref\
+            and class_name == super_class_name
+        if not is_initialization_method and is_super_class\
+                and frame.klass.access_flags.super():
+            klass = run_time_data.method_area[super_class_name]
+            method = klass.find_method(method_name)
+        else:
+            # Otherwise, let C be the class or interface named by the symbolic
+            # reference. Whish don't need do anything
+            pass
+        assert not method.access_flags.native(),\
+            'Not support native method yet.'
+        assert not method.access_flags.synchronized(),\
+            'Not support synchronized method yet.'
+        logging.debug(
+            'Instruction {na}: {kl}:{me}'.format(
+                na=self.class_name_and_address(),
+                kl=class_name,
+                me=method_name
+            )
+        )
+        self.invoke_method = True
+        self.invoke_class_name = class_name
+        self.invoke_method_name = method_name
+        self.invoke_parameter_types = parameters
+        self.invoke_return = rt
+        for _ in range(len(self.invoke_parameter_types)):
+            self.invoke_parameters.append(frame.operand_stack.pop())
+        self.invoke_parameters.reverse()
 
 
 @bytecode(0xb8)
@@ -559,14 +620,14 @@ class invokestatic(_instruction):
 
     def execute(self, frame):
         self.init_invoke_method()
-        method_ref = frame.class_constant_pool[self.index]
+        method_ref = frame.klass.constant_pool[self.index]
         assert type(method_ref) in (
             constant_pool.ConstantMethodref,
             constant_pool.ConstantInterfaceMethodref
         )
-        class_name = method_ref.get_class(frame.class_constant_pool)
+        class_name = method_ref.get_class(frame.klass.constant_pool)
         method_name, method_describ = method_ref.get_method(
-            frame.class_constant_pool)
+            frame.klass.constant_pool)
         parameters, rt = descriptor.parse_method_descriptor(method_describ)
         klass = run_time_data.method_area[class_name]
         method = klass.find_method(method_name)

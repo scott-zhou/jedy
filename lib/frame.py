@@ -4,7 +4,8 @@ from collections import deque
 class Frame(object):
     def __init__(self, klass, method, parameter_types, parameters):
         self.operand_stack = deque()
-        self.class_constant_pool = klass.constant_pool
+        self.klass = klass
+        # self.class_constant_pool = klass.constant_pool
         self.next_ops_address = 0
         self.code = method.code()
         if not self.code:
