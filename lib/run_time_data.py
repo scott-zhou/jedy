@@ -14,7 +14,8 @@ heap = []
 class MethodAreaDict(dict):
     def __getitem__(self, klass_name):
         if klass_name not in self:
-            class_loader.load_class(klass_name)
+            class_struct = class_loader.load_class(klass_name)
+            class_struct.debug_info()
         return super().__getitem__(klass_name)
 
 

@@ -338,6 +338,22 @@ class iadd(_instruction):
         )
 
 
+@bytecode(0x70)
+class irem(_instruction):
+    def execute(self, frame):
+        value2 = frame.operand_stack.pop()
+        value1 = frame.operand_stack.pop()
+        assert type(value1) is int
+        assert type(value2) is int
+        value = int(value1 - int(value1 / value2) * value2)
+        frame.operand_stack.append(value)
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: Remainder int, '
+            f'value1 is {value1}, value2 is {value2}, '
+            f'push result value {value} onto operand stack'
+        )
+
+
 @bytecode(0x64)
 class isub(_instruction):
     def execute(self, frame):
