@@ -38,13 +38,7 @@ class ClassStruct(object):
         self.attributes = []
 
     def name(self):
-        this_class = self.constant(self.this_class)
-        assert type(this_class) is constant_pool.ConstantClass,\
-            'this_class index in constant_pool is not CONSTANT_Class_info'
-        name_str = self.constant(this_class.name_index)
-        assert type(name_str) is constant_pool.ConstantUtf8,\
-            'name_index in constant_pool is not CONSTANT_Utf8_info'
-        return name_str.value()
+        return self.constant_pool.get_constant_class_name(self.this_class)
 
     def find_method(self, method_name):
         for method in self.methods:

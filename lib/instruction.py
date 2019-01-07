@@ -3,6 +3,7 @@ from enum import Enum, unique
 from lib import constant_pool
 from lib import run_time_data
 from lib import descriptor
+from lib import frame as FRAME
 
 OPCODES = {}
 
@@ -345,7 +346,9 @@ class irem(_instruction):
         value1 = frame.operand_stack.pop()
         assert type(value1) is int
         assert type(value2) is int
-        value = int(value1 - int(value1 / value2) * value2)
+        # That the defination in JRE document, but we can use % operator
+        # value = int(value1 - int(value1 / value2) * value2)
+        value = value1 % value2
         frame.operand_stack.append(value)
         logging.debug(
             f'Instruction {self.class_name_and_address()}: Remainder int, '
@@ -666,3 +669,28 @@ class invokestatic(_instruction):
         for _ in range(len(self.invoke_parameter_types)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
+
+
+@bytecode(0xbb)
+class new(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(
+            operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        class_info = frame.klass.constant_pool[self.index]
+        assert type(class_info) is constant_pool.ConstantClass
+        class_name = frame.klass.constant_pool[class_info.name_index]
+        assert type(class_name) is constant_pool.ConstantUtf8
+        klass = run_time_data.method_area[class_name.str_value]
+        obj = FRAME.Object(klass)
+        # TODO: haven't initialized
+        frame.operand_stack.append(obj)
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'push reference {obj} onto operand stack'
+        )

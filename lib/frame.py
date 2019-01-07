@@ -1,6 +1,17 @@
 from collections import deque
 
 
+class Object(object):
+    def __init__(self, klass):
+        self.klass = klass
+
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        return f'Object of class {self.klass.name()}'
+
+
 class Frame(object):
     def __init__(self, klass, method, parameter_types, parameters):
         self.operand_stack = deque()
