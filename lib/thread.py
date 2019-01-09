@@ -66,6 +66,11 @@ class Thread(object):
                     instr.invoke_parameter_types,
                     instr.invoke_parameters
                 )
+                logging.debug(
+                    'Invoke method, new frame local_variables: '
+                    f'{frame.local_variables}, parameter type: '
+                    f'{instr.invoke_parameter_types}'
+                )
                 self.stack.append(frame)
                 i = 0
             elif next_step == instruction.NextStep.jump_to:

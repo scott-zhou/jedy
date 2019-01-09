@@ -322,6 +322,16 @@ class istore_3(istore_n):
         super().__init__(address, 3)
 
 
+@bytecode(0x59)
+class dup(_instruction):
+    def execute(self, frame):
+        frame.operand_stack.append(frame.operand_stack[-1])
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            'Duplicate the top operand stack value'
+        )
+
+
 @bytecode(0x60)
 class iadd(_instruction):
     def execute(self, frame):
