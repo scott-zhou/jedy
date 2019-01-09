@@ -24,6 +24,7 @@ class Thread(object):
         frame, code = self.method_entrance(
             self.class_name,
             self.method_name,
+            None,
             [],  # Ignore the parameters for main function for now.
             []
         )
@@ -31,7 +32,14 @@ class Thread(object):
         logging.debug('Method {name} exit'.format(name=self.method_name))
         logging.debug('Thread exit')
 
-    def method_entrance(self, class_name, method_name, param_types, params):
+    def method_entrance(
+        self,
+        class_name,
+        method_name,
+        objectref,
+        param_types,
+        params
+    ):
         klass = run_time_data.method_area[class_name]
         method = klass.find_method(method_name)
         if not method:
@@ -41,6 +49,7 @@ class Thread(object):
         frame = Frame(
             klass,
             method,
+            objectref,
             param_types,
             params
         )
@@ -63,6 +72,7 @@ class Thread(object):
                 frame, code = self.method_entrance(
                     instr.invoke_class_name,
                     instr.invoke_method_name,
+                    instr.invoke_objectref,
                     instr.invoke_parameter_types,
                     instr.invoke_parameters
                 )

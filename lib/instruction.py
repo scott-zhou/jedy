@@ -33,6 +33,7 @@ class _instruction(object):
         self.invoke_method = False
         self.invoke_class_name = None
         self.invoke_method_name = None
+        self.invoke_objectref = None
         self.invoke_parameter_types = []
         self.invoke_parameters = []
         self.invoke_return = []
@@ -48,6 +49,7 @@ class _instruction(object):
         self.invoke_method = False
         self.invoke_class_name = None
         self.invoke_method_name = None
+        self.invoke_objectref = None
         self.invoke_parameter_types = []
         self.invoke_parameters = []
         self.invoke_return = []
@@ -614,7 +616,7 @@ class invokespecial(_instruction):
             method = klass.find_method(method_name)
         else:
             # Otherwise, let C be the class or interface named by the symbolic
-            # reference. Whish don't need do anything
+            # reference. Which don't need do anything
             pass
         assert not method.access_flags.native(),\
             'Not support native method yet.'
@@ -634,6 +636,8 @@ class invokespecial(_instruction):
         self.invoke_return = rt
         for _ in range(len(self.invoke_parameter_types)):
             self.invoke_parameters.append(frame.operand_stack.pop())
+        # Pop objectref from operand stack
+        self.invoke_objectref = frame.operand_stack.pop()
         self.invoke_parameters.reverse()
 
 
