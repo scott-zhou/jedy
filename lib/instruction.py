@@ -539,6 +539,21 @@ class ireturn(_instruction):
         )
 
 
+@bytecode(0xb0)
+class areturn(_instruction):
+    def execute(self, frame):
+        self.method_return = True
+        self.return_value = frame.operand_stack.pop()
+        assert type(self.return_value) is FRAME.Object, \
+            f'areturn, but get value from operand in type {type(self.return_value)}'
+        logging.debug(
+            'Instruction {na}: return value {v}'.format(
+                na=self.class_name_and_address(),
+                v=self.return_value
+            )
+        )
+
+
 @bytecode(0xb1)
 class instruction_return(_instruction):
     def execute(self, frame):

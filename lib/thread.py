@@ -77,7 +77,8 @@ class Thread(object):
                     instr.invoke_parameters
                 )
                 logging.debug(
-                    'Invoke method, new frame local_variables: '
+                    f'Invoke method {instr.invoke_class_name}.'
+                    f'{instr.invoke_method_name}, new frame local_variables: '
                     f'{frame.local_variables}, parameter type: '
                     f'{instr.invoke_parameter_types}'
                 )

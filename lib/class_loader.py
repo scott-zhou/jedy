@@ -8,6 +8,7 @@ from lib import attributes
 from lib import run_time_data
 
 classpath = './'
+jrelibpath = './jre/lib'
 java_home = ''
 java_library_path = ''
 
@@ -73,12 +74,17 @@ class ClassStruct(object):
                 self.constant_pool.get_constant_class_name(self.this_class)
             )
         )
-        logging.debug(
-            'Super class index: {0} ({1})'.format(
-                str(self.super_class),
-                self.constant_pool.get_constant_class_name(self.super_class)
+        if self.super_class == 0:
+            logging.debug(
+                'This class do not have super class, must be '
+                'java/lang/Object'
             )
-        )
+        else:
+            super_class_name =\
+                self.constant_pool.get_constant_class_name(self.super_class)
+            logging.debug(
+                f'Super class index: {self.super_class} ({super_class_name})'
+            )
         logging.debug('Interface count:' + str(self.interfaces_count))
         for interface in self.interfaces:
             logging.debug(
@@ -351,11 +357,17 @@ def load_class(classname: str) -> ClassStruct:
     :return: ClassStruct object if the class is success loaded, otherwise None
     """
     filename = classname + '.class'
+    # First try class path
     possible_path = os.path.join(classpath, filename)
     if os.path.isfile(possible_path):
         class_struct = parse(possible_path)
         run_time_data.method_area[classname] = class_struct
         return class_struct
-    else:
-        logging.warning(f'{possible_path} is not a file.')
+    # Then try jre lib path
+    possible_path = os.path.join(jrelibpath, filename)
+    if os.path.isfile(possible_path):
+        class_struct = parse(possible_path)
+        run_time_data.method_area[classname] = class_struct
+        return class_struct
+    logging.warning(f'Can not find {classname} class file.')
     return None
