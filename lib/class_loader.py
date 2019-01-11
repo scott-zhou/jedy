@@ -11,6 +11,7 @@ classpath = './'
 jrelibpath = './jre/lib'
 java_home = ''
 java_library_path = ''
+printclass = False
 
 
 class ClassStruct(object):
@@ -51,6 +52,9 @@ class ClassStruct(object):
                 return method
         return None
 
+    def method_name(self, method):
+        return self.constant_pool[method.name_index].value()
+
     def validate(self):
         '''Valid if class struct according to spec
         Raise ValueError if any fail validation
@@ -59,6 +63,8 @@ class ClassStruct(object):
         pass
 
     def debug_info(self):
+        if not printclass:
+            return
         logging.debug('Class file info')
         logging.debug('Magic number: 0x{:X}'.format(self.magic))
         logging.debug('Major version:' + str(self.major_version))
@@ -317,6 +323,18 @@ class Method(object):
         self.descriptor_index = read_bytes.read_u2_int(fd)
         self.attributes_count, self.attributes =\
             attributes.parse(fd, class_file)
+        class_name = class_file.name()
+        method_name = class_file.constant_pool[self.name_index]
+        assert type(method_name) is constant_pool.ConstantUtf8,\
+            'Parse method: method name_index in constant_pool is'\
+            ' not CONSTANT_Utf8_info'
+        self.name = f'{class_name}.{method_name.value()}'
+        logging.debug(f'Method {self.name} loaded, code is:')
+        for attr in self.attributes:
+            if type(attr) is attributes.CodeAttribute:
+                # Only one code attribute in Method
+                logging.debug(' - ' + ' '.join('0x{:02X}'.format(i) for i in attr.code))
+                break
 
     def code(self):
         for attr in self.attributes:

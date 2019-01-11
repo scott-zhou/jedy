@@ -56,6 +56,7 @@ class Thread(object):
         code = method.code()
         if not code:
             raise RuntimeError('Could not find code in method')
+        logging.debug(f'Enter method {class_name}.{method_name}')
         return frame, code
 
     def run_thread_method(self, frame, code):
@@ -64,6 +65,13 @@ class Thread(object):
         while i < code.code_length:
             self.pc_register = i
             instr = code.instructions[i]
+            ins_str = 'unrecognized instruction 0x{:02X}'.format(code.code[i])
+            if instr is not None:
+                # instr is None means we not recognize this instruction yet
+                ins_str = instr.class_name_and_address()
+            logging.debug(
+                f'Executing {frame.method.name}: '
+                f'instruction: {ins_str}')
             instr.execute(frame)
             next_step = instr.next_step()
             if next_step == instruction.NextStep.invoke_method:

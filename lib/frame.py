@@ -16,7 +16,7 @@ class Frame(object):
     def __init__(self, klass, method, objectref, parameter_types, parameters):
         self.operand_stack = deque()
         self.klass = klass
-        # self.class_constant_pool = klass.constant_pool
+        self.method = method
         self.next_ops_address = 0
         self.code = method.code()
         if not self.code:

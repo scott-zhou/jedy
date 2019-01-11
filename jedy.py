@@ -16,6 +16,11 @@ def parse_argument():
         action='store_true',
         help='Output debug informations.'
     )
+    parser.add_argument(
+        '--printclass',
+        action='store_true',
+        help='Output class detail informations.'
+    )
     parser.add_argument('--classpath', help='Java class file path name')
     parser.add_argument('--java-home', help='Java home path')
     parser.add_argument('--java-library-path', help='Java libraqry path')
@@ -40,6 +45,7 @@ def init_logging(debug: bool):
 if __name__ == "__main__":
     args = parse_argument()
     init_logging(args.debug)
+    class_loader.printclass = args.printclass
     logging.debug(args)
     if args.classpath:
         class_loader.classpath = args.classpath
