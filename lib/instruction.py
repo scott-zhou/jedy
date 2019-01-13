@@ -214,14 +214,69 @@ class iload_3(iload_n):
         super().__init__(address, 3)
 
 
+class astore_n(_instruction):
+    def __init__(self, address, n=0):
+        super().__init__(address)
+        self.n = n
+
+    def execute(self, frame):
+        objectref = frame.operand_stack.pop()
+        # TODO: type can be returnAddress reference, what is returnAddress?
+        assert type(objectref) is FRAME.Object,\
+            f'Type of ref in astore is type(objectref)'
+        frame.local_variables[self.n] = objectref
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'pop {objectref} from operand stack and store into '
+            f'local variable {self.n}'
+        )
+
+
+@bytecode(0x3a)
+class astore(astore_n):
+    def __init__(self, address):
+        super().__init__(address)
+
+    def len_of_operand(self):
+        return 1
+
+    def put_operands(self, operand_bytes):
+        assert type(operand_bytes[0]) is int
+        self.n = operand_bytes[0]
+
+
+@bytecode(0x4b)
+class astore_0(astore_n):
+    def __init__(self, address):
+        super().__init__(address, 0)
+
+
+@bytecode(0x4c)
+class astore_1(astore_n):
+    def __init__(self, address):
+        super().__init__(address, 1)
+
+
+@bytecode(0x4d)
+class astore_2(astore_n):
+    def __init__(self, address):
+        super().__init__(address, 2)
+
+
+@bytecode(0x4e)
+class astore_3(astore_n):
+    def __init__(self, address):
+        super().__init__(address, 3)
+
+
 class aload_n(_instruction):
     def __init__(self, address, n=0):
         super().__init__(address)
         self.n = n
 
     def execute(self, frame):
-        # assert type(frame.local_variables[self.n]) is what
-        # TODO: assert the type is reference, then the problem is how to represent a reference?
+        assert type(frame.local_variables[self.n]) is FRAME.Object,\
+            f'Type of ref in aload is {type(frame.local_variables[self.n])}'
         frame.operand_stack.append(frame.local_variables[self.n])
         logging.debug(
             'Instruction {na}: push {a} onto operand stack from local variable {n}'.format(
