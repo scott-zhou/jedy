@@ -755,6 +755,67 @@ class invokestatic(_instruction):
         self.invoke_parameters.reverse()
 
 
+@bytecode(0xb9)
+class invokeinterface(_instruction):
+    def len_of_operand(self):
+        return 4
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 4
+        self.index = int.from_bytes(
+            operand_bytes[:2], byteorder='big', signed=False)
+        assert operand_bytes[2] > 0
+        assert operand_bytes[3] == 0
+
+    def execute(self, frame):
+        self.init_invoke_method()
+        method_ref = frame.klass.constant_pool[self.index]
+        assert type(method_ref) is constant_pool.ConstantInterfaceMethodref
+        # class_name = method_ref.get_class(frame.klass.constant_pool)
+        method_name, method_describ = method_ref.get_method(
+            frame.klass.constant_pool)
+        assert method_name not in ['<init>', '<clinit>'],\
+            'Invoke initialization method in invokeinterface'
+        parameters, rt = descriptor.parse_method_descriptor(method_describ)
+
+        self.invoke_method_name = method_name
+        self.invoke_parameter_types = parameters
+        self.invoke_return = rt
+        for _ in range(len(self.invoke_parameter_types)):
+            self.invoke_parameters.append(frame.operand_stack.pop())
+        self.invoke_parameters.reverse()
+        # Pop objectref from operand stack
+        self.invoke_objectref = frame.operand_stack.pop()
+
+        # Find klass is not correct implemented now, but enough for invoke
+        # super class construction
+        klass = self.invoke_objectref.klass
+        method = None
+        while not method:
+            if not klass:
+                break
+            method = klass.find_method(method_name)
+            if method.descriptor == method_describ:
+                break
+            method = None
+            klass = klass.get_super_class()
+        if not method:
+            # Not resoluve method
+            assert False, 'Methoe resolve exception not implemented yet.'
+        if method.access_flags.private() or method.access_flags.static():
+            assert False, 'IncompatibleClassChangeError exception not implemented yet.'
+
+        assert not method.access_flags.native(),\
+            'Not support native method yet.'
+        assert not method.access_flags.synchronized(),\
+            'Not support synchronized method yet.'
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: {method.name}'
+        )
+        self.invoke_method = True
+        self.invoke_class_name = klass.name()
+
+
 @bytecode(0xbb)
 class new(_instruction):
     def len_of_operand(self):

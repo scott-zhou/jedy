@@ -55,6 +55,14 @@ class ClassStruct(object):
     def method_name(self, method):
         return self.constant_pool[method.name_index].value()
 
+    def get_super_class(self):
+        if self.super_class == 0:
+            # No super class
+            return None
+        return run_time_data.method_area[
+            self.constant_pool.get_constant_class_name(self.super_class)
+        ]
+
     def validate(self):
         '''Valid if class struct according to spec
         Raise ValueError if any fail validation
@@ -329,6 +337,8 @@ class Method(object):
             'Parse method: method name_index in constant_pool is'\
             ' not CONSTANT_Utf8_info'
         self.name = f'{class_name}.{method_name.value()}'
+        self.descriptor =\
+            class_file.constant_pool[self.descriptor_index].value()
         logging.debug(f'Method {self.name} loaded, code is:')
         for attr in self.attributes:
             if type(attr) is attributes.CodeAttribute:
