@@ -1,12 +1,17 @@
 interface People {
-    public int speed();
+    default int speed() {
+        return 1;
+    }
 
-    public static People getPeople(int v) {
-        if (v % 2 == 1) {
+    static People getPeople(int v) {
+        if (v % 3 == 1) {
             return new WhoRunFaster();
         }
-        else {
+        else if (v % 3 == 2){
             return new WhoRunSlower();
+        }
+        else {
+            return new FakeRunner();
         }
     }
 }

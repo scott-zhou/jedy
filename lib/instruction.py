@@ -796,14 +796,15 @@ class invokeinterface(_instruction):
         while not method:
             if not klass:
                 break
+            logging.debug(f'Finding method {method_name} in K {klass.name()}')
             method = klass.find_method(method_name)
-            if method.descriptor == method_describ:
+            if method and method.descriptor == method_describ:
                 break
             method = None
             klass = klass.get_super_class()
         if not method:
             # Not resoluve method
-            assert False, 'Methoe resolve exception not implemented yet.'
+            assert False, 'Method resolve exception not implemented yet.'
         if method.access_flags.private() or method.access_flags.static():
             assert False, 'IncompatibleClassChangeError exception not implemented yet.'
 
