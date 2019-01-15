@@ -31,3 +31,13 @@ class Frame(object):
             if parameter_types[i] in ('D', 'J'):
                 # Double or Long
                 offset += 1
+
+    def operand_debug_str(self):
+        operand_stack_str = \
+            f'[{", ".join(str(v) for v in self.operand_stack)}]'
+        return f'operand stack: {operand_stack_str}'
+
+    def local_variable_debug_str(self):
+        local_variable_str = \
+            f'[{", ".join(str(v) for v in self.local_variables)}]'
+        return f'local variables: {local_variable_str}'

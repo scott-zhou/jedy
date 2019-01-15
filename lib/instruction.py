@@ -85,10 +85,9 @@ class iconst_i(_instruction):
     def execute(self, frame):
         frame.operand_stack.append(self.i)
         logging.debug(
-            'Instruction {na}: push {i} onto operand stack'.format(
-                na=self.class_name_and_address(),
-                i=self.i
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'push {self.i} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -169,11 +168,11 @@ class iload_n(_instruction):
         assert type(frame.local_variables[self.n]) is int
         frame.operand_stack.append(frame.local_variables[self.n])
         logging.debug(
-            'Instruction {na}: push {i} onto operand stack from local variable {n}'.format(
-                na=self.class_name_and_address(),
-                i=frame.local_variables[self.n],
-                n=self.n
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'push {frame.local_variables[self.n]} onto operand stack '
+            f'from local variable {self.n}\n'
+            f'\t{frame.operand_debug_str()}\n'
+            f'\t{frame.local_variable_debug_str()}'
         )
 
 
@@ -228,7 +227,9 @@ class astore_n(_instruction):
         logging.debug(
             f'Instruction {self.class_name_and_address()}: '
             f'pop {objectref} from operand stack and store into '
-            f'local variable {self.n}'
+            f'local variable {self.n}\n'
+            f'\t{frame.operand_debug_str()}\n'
+            f'\t{frame.local_variable_debug_str()}'
         )
 
 
@@ -279,11 +280,11 @@ class aload_n(_instruction):
             f'Type of ref in aload is {type(frame.local_variables[self.n])}'
         frame.operand_stack.append(frame.local_variables[self.n])
         logging.debug(
-            'Instruction {na}: push {a} onto operand stack from local variable {n}'.format(
-                na=self.class_name_and_address(),
-                a=frame.local_variables[self.n],
-                n=self.n
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'push {frame.local_variables[self.n]} onto operand stack '
+            f'from local variable {self.n}\n'
+            f'\t{frame.operand_debug_str()}\n'
+            f'\t{frame.local_variable_debug_str()}'
         )
 
 
@@ -334,11 +335,10 @@ class istore_n(_instruction):
         assert type(i) is int
         frame.local_variables[self.n] = i
         logging.debug(
-            'Instruction {na}: pop {i} from operand stack and set to local variable {n}'.format(
-                na=self.class_name_and_address(),
-                i=i,
-                n=self.n
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'pop {i} from operand stack and set to local variable {self.n}\n'
+            f'\t{frame.operand_debug_str()}\n'
+            f'\t{frame.local_variable_debug_str()}'
         )
 
 
@@ -385,7 +385,8 @@ class dup(_instruction):
         frame.operand_stack.append(frame.operand_stack[-1])
         logging.debug(
             f'Instruction {self.class_name_and_address()}: '
-            'Duplicate the top operand stack value'
+            'Duplicate the top operand stack value\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -399,10 +400,9 @@ class iadd(_instruction):
         value = value1 + value2
         frame.operand_stack.append(value)
         logging.debug(
-            'Instruction {na}: add value1 and value2, push {v} onto operand stack'.format(
-                na=self.class_name_and_address(),
-                v=value
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'add value1 and value2, push {value} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -420,7 +420,8 @@ class irem(_instruction):
         logging.debug(
             f'Instruction {self.class_name_and_address()}: Remainder int, '
             f'value1 is {value1}, value2 is {value2}, '
-            f'push result value {value} onto operand stack'
+            f'push result value {value} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -434,11 +435,11 @@ class isub(_instruction):
         value = value1 - value2
         frame.operand_stack.append(value)
         logging.debug(
-            'Instruction {na}: Subtract value1 and value2, push {v} onto operand stack'.format(
-                na=self.class_name_and_address(),
-                v=value
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'Subtract value1 and value2, push {value} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
+
 
 @bytecode(0x68)
 class imul(_instruction):
@@ -450,10 +451,9 @@ class imul(_instruction):
         value = value1 * value2
         frame.operand_stack.append(value)
         logging.debug(
-            'Instruction {na}: multiply value1 and value2, push {v} onto operand stack'.format(
-                na=self.class_name_and_address(),
-                v=value
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'multiply value1 and value2, push {value} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -465,14 +465,16 @@ class idiv(_instruction):
         assert type(value1) is int
         assert type(value2) is int
         if value2 == 0:
-            raise NotImplementedError('Exception have not implemented. Should through ArithmeticException')
+            raise NotImplementedError(
+                'Exception have not implemented. '
+                'Should through ArithmeticException'
+            )
         value = value1 // value2
         frame.operand_stack.append(value)
         logging.debug(
-            'Instruction {na}: Divide value1 and value2, push {v} onto operand stack'.format(
-                na=self.class_name_and_address(),
-                v=value
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'Divide value1 and value2, push {value} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
 
 
@@ -837,5 +839,6 @@ class new(_instruction):
         frame.operand_stack.append(obj)
         logging.debug(
             f'Instruction {self.class_name_and_address()}: '
-            f'push reference {obj} onto operand stack'
+            f'push reference {obj} onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
         )
