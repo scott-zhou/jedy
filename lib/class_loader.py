@@ -42,15 +42,55 @@ class ClassStruct(object):
     def name(self):
         return self.constant_pool.get_constant_class_name(self.this_class)
 
-    def find_method(self, method_name):
+    def get_method(self, method_name, method_description):
         for method in self.methods:
             name_const = self.constant_pool[method.name_index]
             assert type(name_const) is constant_pool.ConstantUtf8,\
                 f'Method {method_name} name_index in constant_pool is'\
                 ' not CONSTANT_Utf8_info'
-            if name_const.value() == method_name:
+            name = name_const.value()
+            descriptor = method.descriptor
+            if name == method_name and descriptor == method_description:
                 return method
         return None
+
+    def method_resolution(self, method_name, method_description):
+        klass = self
+        while True:
+            if not klass:
+                return None, None
+            for method in klass.methods:
+                name_const = klass.constant_pool[method.name_index]
+                assert type(name_const) is constant_pool.ConstantUtf8,\
+                    f'Method {method_name} name_index in constant_pool is'\
+                    ' not CONSTANT_Utf8_info'
+                name = name_const.value()
+                descriptor = method.descriptor
+                if name == method_name and descriptor == method_description:
+                    # Method resolved, return
+                    return klass, method
+            klass = klass.get_super_class()
+        return None, None
+
+    def interface_resolution(self, method_name, method_description):
+        resolved_class, resolved_method = self.method_resolution(
+            method_name, method_description
+        )
+        if resolved_class and resolved_method:
+            return resolved_class, resolved_method
+        counter = 0
+        klass, method = None, None
+        for interface in self.superinterfaces():
+            klass = interface
+            method = interface.get_method(method_name, method_description)
+            if method:
+                counter += 1
+        if counter == 0:
+            assert False, f'Method {method_name} not found implementation.'
+        elif counter != 1:
+            assert False, \
+                f'Found {counter} {method_name} in superinterfaces.'
+        return klass, method
 
     def method_name(self, method):
         return self.constant_pool[method.name_index].value()

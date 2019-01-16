@@ -33,10 +33,9 @@ class _instruction(object):
         self.invoke_method = False
         self.invoke_class_name = None
         self.invoke_method_name = None
+        self.invoke_method_descriptor = None
         self.invoke_objectref = None
-        self.invoke_parameter_types = []
         self.invoke_parameters = []
-        self.invoke_return = []
         # For return
         self.method_return = False
         self.return_value = None
@@ -49,10 +48,9 @@ class _instruction(object):
         self.invoke_method = False
         self.invoke_class_name = None
         self.invoke_method_name = None
+        self.invoke_method_descriptor = None
         self.invoke_objectref = None
-        self.invoke_parameter_types = []
         self.invoke_parameters = []
-        self.invoke_return = []
 
     def len_of_operand(self):
         return 0
@@ -671,11 +669,10 @@ class invokespecial(_instruction):
         class_name = method_ref.get_class(frame.klass.constant_pool)
         method_name, method_describ = method_ref.get_method(
             frame.klass.constant_pool)
-        parameters, rt = descriptor.parse_method_descriptor(method_describ)
         # Find klass is not correct implemented now, but enough for invoke
         # super class construction
         klass = run_time_data.method_area[class_name]
-        method = klass.find_method(method_name)
+        method = klass.get_method(method_name, method_describ)
         is_initialization_method = method_name in ['<init>', '<clinit>']
         super_class_name = frame.klass.constant_pool[
             frame.klass.constant_pool[frame.klass.super_class].name_index
@@ -685,7 +682,7 @@ class invokespecial(_instruction):
         if not is_initialization_method and is_super_class\
                 and frame.klass.access_flags.super():
             klass = run_time_data.method_area[super_class_name]
-            method = klass.find_method(method_name)
+            method = klass.get_method(method_name, method_describ)
         else:
             # Otherwise, let C be the class or interface named by the symbolic
             # reference. Which don't need do anything
@@ -704,9 +701,9 @@ class invokespecial(_instruction):
         self.invoke_method = True
         self.invoke_class_name = class_name
         self.invoke_method_name = method_name
-        self.invoke_parameter_types = parameters
-        self.invoke_return = rt
-        for _ in range(len(self.invoke_parameter_types)):
+        self.invoke_method_descriptor = method_describ
+        parameters, _ = descriptor.parse_method_descriptor(method_describ)
+        for _ in range(len(parameters)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         # Pop objectref from operand stack
         self.invoke_objectref = frame.operand_stack.pop()
@@ -733,9 +730,8 @@ class invokestatic(_instruction):
         class_name = method_ref.get_class(frame.klass.constant_pool)
         method_name, method_describ = method_ref.get_method(
             frame.klass.constant_pool)
-        parameters, rt = descriptor.parse_method_descriptor(method_describ)
         klass = run_time_data.method_area[class_name]
-        method = klass.find_method(method_name)
+        method = klass.get_method(method_name, method_describ)
         assert not method.access_flags.native(),\
             'Not support native method yet.'
         assert not method.access_flags.synchronized(),\
@@ -750,9 +746,9 @@ class invokestatic(_instruction):
         self.invoke_method = True
         self.invoke_class_name = class_name
         self.invoke_method_name = method_name
-        self.invoke_parameter_types = parameters
-        self.invoke_return = rt
-        for _ in range(len(self.invoke_parameter_types)):
+        self.invoke_method_descriptor = method_describ
+        parameters, _ = descriptor.parse_method_descriptor(method_describ)
+        for _ in range(len(parameters)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
 
@@ -778,12 +774,11 @@ class invokeinterface(_instruction):
             frame.klass.constant_pool)
         assert method_name not in ['<init>', '<clinit>'],\
             'Invoke initialization method in invokeinterface'
-        parameters, rt = descriptor.parse_method_descriptor(method_describ)
 
         self.invoke_method_name = method_name
-        self.invoke_parameter_types = parameters
-        self.invoke_return = rt
-        for _ in range(len(self.invoke_parameter_types)):
+        self.invoke_method_descriptor = method_describ
+        parameters, _ = descriptor.parse_method_descriptor(method_describ)
+        for _ in range(len(parameters)):
             self.invoke_parameters.append(frame.operand_stack.pop())
         self.invoke_parameters.reverse()
         # Pop objectref from operand stack
@@ -791,36 +786,9 @@ class invokeinterface(_instruction):
 
         klass = self.invoke_objectref.klass
         method = None
-        while not method:
-            if not klass:
-                break
-            logging.debug(f'Finding method {method_name} in K {klass.name()}')
-            method = klass.find_method(method_name)
-            if method and method.descriptor == method_describ:
-                break
-            method = None
-            klass = klass.get_super_class()
-        if not method:
-            logging.debug(
-                f'Method {method_name} not found in '
-                f'class {self.invoke_objectref.klass.name()} '
-                'or it\'s super class. Start try superinterfaces.'
-            )
-            counter_in_interface = 0
-            for interface in self.invoke_objectref.klass.superinterfaces():
-                method = interface.find_method(method_name)
-                klass = interface
-                if method:
-                    if method.descriptor == method_describ:
-                        counter_in_interface += 1
-                    else:
-                        method = None
-            if counter_in_interface == 0:
-                assert False, f'Method {method_name} not found implementation.'
-            elif counter_in_interface != 1:
-                assert False, \
-                    f'Found {counter_in_interface} {method_name} in'\
-                    ' superinterfaces'
+        klass, method = self.invoke_objectref.klass.interface_resolution(
+            method_name, method_describ
+        )
         if not method:
             # Not resoluve method
             assert False, 'Method resolve exception not implemented yet.'

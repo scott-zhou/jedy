@@ -3,6 +3,7 @@ from collections import deque
 from lib import run_time_data
 from lib.frame import Frame
 from lib import instruction
+from lib import descriptor
 
 
 class Thread(object):
@@ -24,9 +25,9 @@ class Thread(object):
         frame, code = self.method_entrance(
             self.class_name,
             self.method_name,
+            self.method_descriptor,
             None,
-            [],  # Ignore the parameters for main function for now.
-            []
+            ['']  # Ignore the parameters for main function for now.
         )
         self.run_thread_method(frame, code)
         logging.debug('Method {name} exit'.format(name=self.method_name))
@@ -36,16 +37,17 @@ class Thread(object):
         self,
         class_name,
         method_name,
+        method_description,
         objectref,
-        param_types,
         params
     ):
         klass = run_time_data.method_area[class_name]
-        method = klass.find_method(method_name)
+        method = klass.get_method(method_name, method_description)
         if not method:
             logging.error(
                 f'Could not find method {method_name} in class {class_name}')
             return
+        param_types, _ = descriptor.parse_method_descriptor(method_description)
         frame = Frame(
             klass,
             method,
@@ -80,15 +82,16 @@ class Thread(object):
                 frame, code = self.method_entrance(
                     instr.invoke_class_name,
                     instr.invoke_method_name,
+                    instr.invoke_method_descriptor,
                     instr.invoke_objectref,
-                    instr.invoke_parameter_types,
+                    # instr.invoke_parameter_types,
                     instr.invoke_parameters
                 )
                 logging.debug(
                     f'Invoke method {instr.invoke_class_name}.'
-                    f'{instr.invoke_method_name}, new frame local_variables: '
-                    f'{frame.local_variables}, parameter type: '
-                    f'{instr.invoke_parameter_types}'
+                    f'{instr.invoke_method_name} '
+                    f'{instr.invoke_method_descriptor}, '
+                    f'new frame local_variables: {frame.local_variables}'
                 )
                 self.stack.append(frame)
                 i = 0
