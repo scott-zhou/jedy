@@ -63,6 +63,12 @@ class ClassStruct(object):
             self.constant_pool.get_constant_class_name(self.super_class)
         ]
 
+    def superinterfaces(self):
+        for i in self.interfaces:
+            yield run_time_data.method_area[
+                self.constant_pool.get_constant_class_name(i)
+            ]
+
     def validate(self):
         '''Valid if class struct according to spec
         Raise ValueError if any fail validation

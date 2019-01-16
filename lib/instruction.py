@@ -789,8 +789,6 @@ class invokeinterface(_instruction):
         # Pop objectref from operand stack
         self.invoke_objectref = frame.operand_stack.pop()
 
-        # Find klass is not correct implemented now, but enough for invoke
-        # super class construction
         klass = self.invoke_objectref.klass
         method = None
         while not method:
@@ -803,10 +801,32 @@ class invokeinterface(_instruction):
             method = None
             klass = klass.get_super_class()
         if not method:
+            logging.debug(
+                f'Method {method_name} not found in '
+                f'class {self.invoke_objectref.klass.name()} '
+                'or it\'s super class. Start try superinterfaces.'
+            )
+            counter_in_interface = 0
+            for interface in self.invoke_objectref.klass.superinterfaces():
+                method = interface.find_method(method_name)
+                klass = interface
+                if method:
+                    if method.descriptor == method_describ:
+                        counter_in_interface += 1
+                    else:
+                        method = None
+            if counter_in_interface == 0:
+                assert False, f'Method {method_name} not found implementation.'
+            elif counter_in_interface != 1:
+                assert False, \
+                    f'Found {counter_in_interface} {method_name} in'\
+                    ' superinterfaces'
+        if not method:
             # Not resoluve method
             assert False, 'Method resolve exception not implemented yet.'
         if method.access_flags.private() or method.access_flags.static():
-            assert False, 'IncompatibleClassChangeError exception not implemented yet.'
+            assert False, \
+                'IncompatibleClassChangeError exception not implemented yet.'
 
         assert not method.access_flags.native(),\
             'Not support native method yet.'
