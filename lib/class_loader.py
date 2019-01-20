@@ -13,6 +13,8 @@ java_home = ''
 java_library_path = ''
 printclass = False
 
+local_variable_callbacks = {}
+
 
 class ClassStruct(object):
     '''Store compiled class structures such as the run-time

@@ -1,4 +1,5 @@
 from collections import deque
+from lib import class_loader
 
 
 class Object(object):
@@ -12,6 +13,17 @@ class Object(object):
         return f'Object of class {self.klass.name()}'
 
 
+class _LocalVariables(list):
+    def __init__(self, onSetLocalVariable=None):
+        self.onSetLocalVariable = onSetLocalVariable
+        super().__init__()
+
+    def __setitem__(self, idx, value):
+        if self.onSetLocalVariable:
+            self.onSetLocalVariable(idx, value)
+        return super().__setitem__(idx, value)
+
+
 class Frame(object):
     def __init__(self, klass, method, objectref, parameter_types, parameters):
         self.operand_stack = deque()
@@ -21,7 +33,13 @@ class Frame(object):
         self.code = method.code()
         if not self.code:
             raise RuntimeError('Could not find code in method')
-        self.local_variables = [None for _ in range(self.code.max_locals)]
+        self.local_variables = _LocalVariables(
+            class_loader.local_variable_callbacks.get(
+                method.name, None
+            )
+        )
+        for _ in range(self.code.max_locals):
+            self.local_variables.append(None)
         offset = 0
         if objectref:
             self.local_variables[0] = objectref
