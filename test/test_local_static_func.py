@@ -9,23 +9,30 @@ from lib import (
 
 class TestBootstrapClassLoader(TestCase):
     def setUp(self):
-        class_loader.classpath = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            'local_static_func'
-        )
         class_loader.jrelibpath = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             '..'
         )
-        self.class_struct = class_loader.load_class('LocalStaticFunc')
-        self.main_thread = thread.Thread(
-            'LocalStaticFunc', 'main', '([Ljava/lang/String;)V', [''])
-        run_time_data.thread_pool.append(self.main_thread)
 
     def tearDown(self):
         self.class_struct = None
 
+    def load_main(self, klass_path, klass_name):
+        class_loader.classpath = klass_path
+        self.class_struct = class_loader.load_class(klass_name)
+        self.main_thread = thread.Thread(
+            klass_name, 'main', '([Ljava/lang/String;)V', [''])
+        run_time_data.thread_pool.append(self.main_thread)
+
     def test_local_static_func_return_6(self):
+        self.load_main(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'local_static_func'
+            ),
+            'LocalStaticFunc'
+        )
+
         final_index_1_value = None
 
         def func(idx, value):
