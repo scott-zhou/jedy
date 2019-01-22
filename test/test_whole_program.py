@@ -11,7 +11,9 @@ class TestAsAWholeProgramm(TestCase):
     def setUp(self):
         class_loader.jrelibpath = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
-            '..'
+            '..',
+            'jre',
+            'lib'
         )
 
     def tearDown(self):
@@ -90,4 +92,29 @@ class TestAsAWholeProgramm(TestCase):
             final_index_1_value,
             6,
             'Load another class call cal func return wrong result.'
+        )
+
+    def test_virtual_function(self):
+        self.load_main(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'call_virtual_function'
+            ),
+            'Main'
+        )
+
+        final_index_2_values = []
+
+        def func(idx, value):
+            print(f'ID: {idx}, value: {value}')
+            nonlocal final_index_2_values
+            if idx == 2:
+                final_index_2_values.append(value)
+
+        class_loader.local_variable_callbacks['Main.main'] = func
+        self.main_thread.run()
+        self.assertEqual(
+            final_index_2_values,
+            [20, 1],
+            'Virtual function wrong result.'
         )
