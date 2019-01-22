@@ -66,3 +66,28 @@ class TestAsAWholeProgramm(TestCase):
         self.main_thread.run()
         self.assertEqual(
             final_index_1_value, 30, 'Simple loop calculate get wrong result.')
+
+    def test_load_another_class(self):
+        self.load_main(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'load_another_class'
+            ),
+            'Main'
+        )
+
+        final_index_1_value = None
+
+        def func(idx, value):
+            print(f'ID: {idx}, value: {value}')
+            nonlocal final_index_1_value
+            if idx == 1:
+                final_index_1_value = value
+
+        class_loader.local_variable_callbacks['Main.main'] = func
+        self.main_thread.run()
+        self.assertEqual(
+            final_index_1_value,
+            6,
+            'Load another class call cal func return wrong result.'
+        )
