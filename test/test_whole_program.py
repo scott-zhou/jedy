@@ -7,7 +7,7 @@ from lib import (
 )
 
 
-class TestBootstrapClassLoader(TestCase):
+class TestAsAWholeProgramm(TestCase):
     def setUp(self):
         class_loader.jrelibpath = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
@@ -44,3 +44,25 @@ class TestBootstrapClassLoader(TestCase):
         self.main_thread.run()
         self.assertEqual(
             final_index_1_value, 6, 'Local static func return value wrong.')
+
+    def test_simple_loop(self):
+        self.load_main(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'simple_loop'
+            ),
+            'SimpleLoop'
+        )
+
+        final_index_1_value = None
+
+        def func(idx, value):
+            print(f'ID: {idx}, value: {value}')
+            nonlocal final_index_1_value
+            if idx == 1:
+                final_index_1_value = value
+
+        class_loader.local_variable_callbacks['SimpleLoop.main'] = func
+        self.main_thread.run()
+        self.assertEqual(
+            final_index_1_value, 30, 'Simple loop calculate get wrong result.')
