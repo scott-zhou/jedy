@@ -664,15 +664,15 @@ class putfield(_instruction):
         field_ref = frame.klass.constant_pool[self.index]
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
-        logging.debug(type(class_name))
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
         field = descriptor.parse_field_descriptor(field)
-        logging.debug(
-            f'Instruction {self.class_name_and_address()}: '
-            f'resolute filed {name}({field}) in class {class_name}'
-        )
+
         value = frame.operand_stack.pop()
         obj = frame.operand_stack.pop()
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'Set {obj}(id:{id(obj)}) filed {name} as value {value}'
+        )
         obj.set_field(class_name, field, name, value)
         logging.debug(
             f'Instruction {self.class_name_and_address()}: '
