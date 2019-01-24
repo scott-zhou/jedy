@@ -5,12 +5,19 @@ from lib import class_loader
 class Object(object):
     def __init__(self, klass):
         self.klass = klass
+        self.fields = {}
 
     def __repr__(self):
         return f'Object({self.klass.name()})'
 
     def __str__(self):
         return f'Object of class {self.klass.name()}'
+
+    def set_field(self, field_klass_name, field_type, field_name, field_value):
+        print('Field: ', (field_klass_name, field_type, field_name))
+        print("value: ", field_value)
+        self.fields[(field_klass_name, tuple(field_type), field_name)] = \
+            field_value
 
 
 class _LocalVariables(list):
