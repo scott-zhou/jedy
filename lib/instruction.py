@@ -646,6 +646,39 @@ class getstatic(_instruction):
         logging.error('Execute getstatic havent been implemented.')
 
 
+@bytecode(0xb4)
+class getfield(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(
+            operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        '''According JVM document, there are lots of checks for putfield
+        instruction, for type check and for access permission. But they are
+        all ignored, as we assume this is correct JAVA class file.
+        '''
+        field_ref = frame.klass.constant_pool[self.index]
+        assert type(field_ref) is constant_pool.ConstantFieldref
+        class_name = field_ref.get_class(frame.klass.constant_pool)
+        name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
+        field = descriptor.parse_field_descriptor(field)
+
+        obj = frame.operand_stack.pop()
+        value = obj.get_field(class_name, field, name)
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'Get {obj}(id:{id(obj)}) filed {name} value {value}'
+        )
+        frame.operand_stack.append(value)
+        logging.debug(
+            f'After exec putfield, operand stack: {frame.operand_debug_str()}'
+        )
+
+
 @bytecode(0xb5)
 class putfield(_instruction):
     def len_of_operand(self):
@@ -675,9 +708,7 @@ class putfield(_instruction):
         )
         obj.set_field(class_name, field, name, value)
         logging.debug(
-            f'Instruction {self.class_name_and_address()}: '
-            f'push reference {obj} onto operand stack\n'
-            f'\t{frame.operand_debug_str()}'
+            f'After exec putfield, operand stack: {frame.operand_debug_str()}'
         )
 
 

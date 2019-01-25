@@ -14,10 +14,11 @@ class Object(object):
         return f'Object of class {self.klass.name()}'
 
     def set_field(self, field_klass_name, field_type, field_name, field_value):
-        print('Field: ', (field_klass_name, field_type, field_name))
-        print("value: ", field_value)
         self.fields[(field_klass_name, tuple(field_type), field_name)] = \
             field_value
+
+    def get_field(self, field_klass_name, field_type, field_name):
+        return self.fields[(field_klass_name, tuple(field_type), field_name)]
 
 
 class _LocalVariables(list):
