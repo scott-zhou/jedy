@@ -850,8 +850,6 @@ class invokeinterface(_instruction):
         # Pop objectref from operand stack
         self.invoke_objectref = frame.operand_stack.pop()
 
-        klass = self.invoke_objectref.klass
-        method = None
         klass, method = self.invoke_objectref.klass.interface_resolution(
             method_name, method_describ
         )
@@ -859,6 +857,57 @@ class invokeinterface(_instruction):
             # Not resoluve method
             assert False, 'Method resolve exception not implemented yet.'
         if method.access_flags.private() or method.access_flags.static():
+            assert False, \
+                'IncompatibleClassChangeError exception not implemented yet.'
+
+        assert not method.access_flags.native(),\
+            'Not support native method yet.'
+        assert not method.access_flags.synchronized(),\
+            'Not support synchronized method yet.'
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: {method.name}'
+        )
+        self.invoke_method = True
+        self.invoke_class_name = klass.name()
+
+
+@bytecode(0xb6)
+class invokevirtual(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(
+            operand_bytes[:2], byteorder='big', signed=False)
+
+    def execute(self, frame):
+        self.init_invoke_method()
+        method_ref = frame.klass.constant_pool[self.index]
+        assert type(method_ref) is constant_pool.ConstantMethodref
+        class_name = method_ref.get_class(frame.klass.constant_pool)
+        method_name, method_describ = method_ref.get_method(
+            frame.klass.constant_pool)
+        klass = run_time_data.method_area[class_name]
+        method = klass.get_method(method_name, method_describ)
+        if method.isSignaturePolymorphic():
+            raise NotImplementedError(
+                'Invoke signature polymorphic method is not implemented.')
+        self.invoke_method_name = method_name
+        self.invoke_method_descriptor = method_describ
+        parameters, _ = descriptor.parse_method_descriptor(method_describ)
+        for _ in range(len(parameters)):
+            self.invoke_parameters.append(frame.operand_stack.pop())
+        self.invoke_parameters.reverse()
+        # Pop objectref from operand stack
+        self.invoke_objectref = frame.operand_stack.pop()
+        klass, method = self.invoke_objectref.klass.interface_resolution(
+            method_name, method_describ
+        )
+        if not method:
+            # Not resoluve method
+            assert False, 'Method resolve exception not implemented yet.'
+        if method.access_flags.static():
             assert False, \
                 'IncompatibleClassChangeError exception not implemented yet.'
 

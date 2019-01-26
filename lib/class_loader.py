@@ -384,6 +384,8 @@ class Method(object):
         assert type(method_name) is constant_pool.ConstantUtf8,\
             'Parse method: method name_index in constant_pool is'\
             ' not CONSTANT_Utf8_info'
+        self.class_name = class_name
+        self.method_name = method_name
         self.name = f'{class_name}.{method_name.value()}'
         self.descriptor =\
             class_file.constant_pool[self.descriptor_index].value()
@@ -403,7 +405,6 @@ class Method(object):
 
     def debug_info(self, class_struct):
         name = class_struct.constant_pool[self.name_index].value()
-        descriptor = class_struct.constant_pool[self.descriptor_index].value()
         logging.debug(
             'Method - name index:' +
             str(self.name_index) +
@@ -412,12 +413,18 @@ class Method(object):
         logging.debug(
             '       - descriptor index:' +
             str(self.descriptor_index) +
-            ' ("{0}")'.format(descriptor)
+            ' ("{0}")'.format(self.descriptor)
         )
         self.access_flags.debug_info('       - ')
         logging.debug(f'       - attributes count: {self.attributes_count}')
         for attr in self.attributes:
             attr.debug_info('       -       - ')
+
+    def isSignaturePolymorphic(self):
+        return self.class_name == 'java.lang.invoke.MethodHandle' and \
+            self.descriptor == '([Ljava/lang/Object;)Ljava/lang/Object;' and \
+            self.access_flags.varargs() and\
+            self.access_flags.native()
 
 
 def parse(file_name: str, loader=BootstrapClassLoader):

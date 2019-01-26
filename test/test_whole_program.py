@@ -103,18 +103,50 @@ class TestAsAWholeProgramm(TestCase):
             'Main'
         )
 
-        final_index_2_values = []
+        local_variable_index_2_values = []
 
         def func(idx, value):
             print(f'ID: {idx}, value: {value}')
-            nonlocal final_index_2_values
+            nonlocal local_variable_index_2_values
             if idx == 2:
-                final_index_2_values.append(value)
+                local_variable_index_2_values.append(value)
 
         class_loader.local_variable_callbacks['Main.main'] = func
         self.main_thread.run()
         self.assertEqual(
-            final_index_2_values,
+            local_variable_index_2_values,
             [20, 1],
+            'Virtual function wrong result.'
+        )
+
+    def test_get_set_field(self):
+        self.load_main(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'get_set_field'
+            ),
+            'Main'
+        )
+        local_variable_index_2_values = []
+        local_variable_index_3_values = []
+
+        def func(idx, value):
+            print(f'ID: {idx}, value: {value}')
+            nonlocal local_variable_index_2_values
+            nonlocal local_variable_index_3_values
+            if idx == 2:
+                local_variable_index_2_values.append(value)
+            elif idx == 3:
+                local_variable_index_3_values.append(value)
+        class_loader.local_variable_callbacks['Main.main'] = func
+        self.main_thread.run()
+        self.assertEqual(
+            local_variable_index_2_values,
+            [99, 199],
+            'Virtual function wrong result.'
+        )
+        self.assertEqual(
+            local_variable_index_3_values,
+            [199, 99],
             'Virtual function wrong result.'
         )
