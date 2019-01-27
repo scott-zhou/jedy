@@ -377,6 +377,17 @@ class istore_3(istore_n):
         super().__init__(address, 3)
 
 
+@bytecode(0x57)
+class pop(_instruction):
+    def execute(self, frame):
+        frame.operand_stack.pop()
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            'Pop the top value from the operand stack\n'
+            f'\t{frame.operand_debug_str()}'
+        )
+
+
 @bytecode(0x59)
 class dup(_instruction):
     def execute(self, frame):
