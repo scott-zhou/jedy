@@ -2,10 +2,13 @@
 '''
 import os
 import logging
-from lib import read_bytes
-from lib import constant_pool
-from lib import attributes
-from lib import run_time_data
+from lib import (
+    read_bytes,
+    constant_pool,
+    attributes,
+    run_time_data,
+    thread
+)
 
 classpath = './'
 jrelibpath = './jre/lib'
@@ -434,23 +437,40 @@ def parse(file_name: str, loader=BootstrapClassLoader):
     return class_struct
 
 
+def exec_class_initialization_method(class_struct: ClassStruct) -> None:
+    '''Invoke class or interface initialization method
+    '''
+    class_name = class_struct.name()
+    if class_name in run_time_data.class_static_fields:
+        # class initialization method is already exectued, it shoule only
+        # be executed once
+        return
+    method_name, method_description = '<clinit>', '()V'
+    if not class_struct.get_method(method_name, method_description):
+        # no class initialization method
+        return
+    init_thread = thread.Thread(
+        class_name, method_name, method_description, [])
+    init_thread.run()
+
+
 def load_class(classname: str) -> ClassStruct:
     """
     :param classname: str, represent the name of class
     :return: ClassStruct object if the class is success loaded, otherwise None
     """
     filename = classname + '.class'
-    # First try class path
-    possible_path = os.path.join(classpath, filename)
-    if os.path.isfile(possible_path):
-        class_struct = parse(possible_path)
-        run_time_data.method_area[classname] = class_struct
-        return class_struct
-    # Then try jre lib path
-    possible_path = os.path.join(jrelibpath, filename)
-    if os.path.isfile(possible_path):
-        class_struct = parse(possible_path)
-        run_time_data.method_area[classname] = class_struct
-        return class_struct
-    logging.warning(f'Can not find {classname} class file.')
-    return None
+    # First try class path, then try jre lib path
+    possible_path = os.path.join(classpath, filename) if \
+        os.path.isfile(os.path.join(classpath, filename)) else \
+        (os.path.join(jrelibpath, filename) if
+            os.path.isfile(os.path.join(jrelibpath, filename)) else
+            None)
+    if not possible_path:
+        logging.warning(f'Can not find {classname} class file.')
+        return None
+
+    class_struct = parse(possible_path)
+    run_time_data.method_area[classname] = class_struct
+    exec_class_initialization_method(class_struct)
+    return class_struct

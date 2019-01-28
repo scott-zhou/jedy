@@ -1,3 +1,4 @@
+from collections import defaultdict
 from lib import class_loader
 
 
@@ -22,5 +23,7 @@ class MethodAreaDict(dict):
 
 
 method_area = MethodAreaDict()
+
+class_static_fields = defaultdict(dict)
 
 thread_pool = []

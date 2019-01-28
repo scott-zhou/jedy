@@ -645,16 +645,43 @@ class getstatic(_instruction):
         field_ref = frame.klass.constant_pool[self.index]
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
-        logging.debug(type(class_name))
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
-        field = descriptor.parse_field_descriptor(field)
+        value = run_time_data.class_static_fields[class_name][(name, field)]
         logging.debug(
-            'Instruction {na}: resolute filed {name}({field}) in class {class_name}'.format(
-                na=self.class_name_and_address(),
-                **vars()
-            )
+            f'Instruction {self.class_name_and_address()}: '
+            f'get static filed {class_name}.{name}({field}) '
+            'and push onto operand stack'
         )
-        logging.error('Execute getstatic havent been implemented.')
+        frame.operand_stack.append(value)
+        logging.debug(
+            f'After exec getstatic, operand stack: {frame.operand_debug_str()}'
+        )
+
+
+@bytecode(0xb3)
+class putstatic(_instruction):
+    def len_of_operand(self):
+        return 2
+
+    def put_operands(self, operand_bytes):
+        assert len(operand_bytes) == 2
+        self.index = int.from_bytes(
+            operand_bytes, byteorder='big', signed=False)
+
+    def execute(self, frame):
+        field_ref = frame.klass.constant_pool[self.index]
+        assert type(field_ref) is constant_pool.ConstantFieldref
+        class_name = field_ref.get_class(frame.klass.constant_pool)
+        name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
+        value = frame.operand_stack.pop()
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'Put {value} on filed {class_name}.{name}({field})'
+        )
+        run_time_data.class_static_fields[class_name][(name, field)] = value
+        logging.debug(
+            f'After exec putstatic, operand stack: {frame.operand_debug_str()}'
+        )
 
 
 @bytecode(0xb4)
@@ -807,12 +834,6 @@ class invokestatic(_instruction):
         class_name = method_ref.get_class(frame.klass.constant_pool)
         method_name, method_describ = method_ref.get_method(
             frame.klass.constant_pool)
-        klass = run_time_data.method_area[class_name]
-        method = klass.get_method(method_name, method_describ)
-        assert not method.access_flags.native(),\
-            'Not support native method yet.'
-        assert not method.access_flags.synchronized(),\
-            'Not support synchronized method yet.'
         logging.debug(
             'Instruction {na}: {kl}:{me}'.format(
                 na=self.class_name_and_address(),
@@ -820,6 +841,17 @@ class invokestatic(_instruction):
                 me=method_name
             )
         )
+        # TODO: Native method invoke is not implemented
+        # Ignore this method as it is used in Object class init method
+        if class_name == 'java/lang/Object' and method_name == 'registerNatives':
+            logging.error('java/lang/Object.registerNatives not implemented!')
+            return
+        klass = run_time_data.method_area[class_name]
+        method = klass.get_method(method_name, method_describ)
+        assert not method.access_flags.native(),\
+            'Not support native method yet.'
+        assert not method.access_flags.synchronized(),\
+            'Not support synchronized method yet.'
         self.invoke_method = True
         self.invoke_class_name = class_name
         self.invoke_method_name = method_name
