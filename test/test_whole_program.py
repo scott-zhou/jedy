@@ -129,24 +129,33 @@ class TestAsAWholeProgramm(TestCase):
         )
         local_variable_index_2_values = []
         local_variable_index_3_values = []
+        local_variable_index_4_values = []
 
         def func(idx, value):
             print(f'ID: {idx}, value: {value}')
             nonlocal local_variable_index_2_values
             nonlocal local_variable_index_3_values
+            nonlocal local_variable_index_4_values
             if idx == 2:
                 local_variable_index_2_values.append(value)
             elif idx == 3:
                 local_variable_index_3_values.append(value)
+            elif idx == 4:
+                local_variable_index_4_values.append(value)
         class_loader.local_variable_callbacks['Main.main'] = func
         self.main_thread.run()
         self.assertEqual(
             local_variable_index_2_values,
             [99, 199],
-            'Virtual function wrong result.'
+            'Get and set object field wrong result.'
         )
         self.assertEqual(
             local_variable_index_3_values,
             [199, 99],
-            'Virtual function wrong result.'
+            'Get and set object field wrong result.'
+        )
+        self.assertEqual(
+            local_variable_index_4_values,
+            [2, 3, 4],
+            'Get and set static field wrong result.'
         )
