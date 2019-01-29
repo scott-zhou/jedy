@@ -4,6 +4,7 @@ from lib import constant_pool
 from lib import run_time_data
 from lib import descriptor
 from lib import frame as FRAME
+from lib.oracle_jre_native_methods import get_native_method
 
 OPCODES = {}
 
@@ -841,15 +842,16 @@ class invokestatic(_instruction):
                 me=method_name
             )
         )
-        # TODO: Native method invoke is not implemented
-        # Ignore this method as it is used in Object class init method
-        if class_name == 'java/lang/Object' and method_name == 'registerNatives':
-            logging.error('java/lang/Object.registerNatives not implemented!')
-            return
         klass = run_time_data.method_area[class_name]
         method = klass.get_method(method_name, method_describ)
-        assert not method.access_flags.native(),\
-            'Not support native method yet.'
+        if method.access_flags.native():
+            fake_method = get_native_method(
+                class_name, method_name, method_describ)
+            if fake_method:
+                fake_method(frame.operand_stack)
+                return
+            else:
+                assert False, 'Not support native method yet.'
         assert not method.access_flags.synchronized(),\
             'Not support synchronized method yet.'
         self.invoke_method = True
