@@ -5,6 +5,7 @@ from lib import run_time_data
 from lib import descriptor
 from lib import frame as FRAME
 from lib.oracle_jre_native_methods import get_native_method
+from lib import class_loader
 
 OPCODES = {}
 
@@ -984,7 +985,7 @@ class new(_instruction):
         assert type(class_name) is constant_pool.ConstantUtf8
         klass = run_time_data.method_area[class_name.str_value]
         obj = FRAME.Object(klass)
-        # TODO: haven't initialized
+        class_loader.init_class_object(klass, obj)
         frame.operand_stack.append(obj)
         logging.debug(
             f'Instruction {self.class_name_and_address()}: '

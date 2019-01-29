@@ -2,6 +2,7 @@ public class Data {
     public int pub_v;
     private int pv_v;
     public static int count = 2;
+    private int default_value; // This default value should be 0
 
     public Data() {
         pub_v = 99;
@@ -20,5 +21,7 @@ public class Data {
     {
         count++;
     }
+
+    public int get_default_v() {return default_value;}
 
 }

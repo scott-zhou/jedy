@@ -13,5 +13,6 @@ public class Main {
         z = Data.count;
         Data.count = z + 1;
         z = d.count;
+        z = d.get_default_v();
     }
 }

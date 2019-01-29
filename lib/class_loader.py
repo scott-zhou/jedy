@@ -3,9 +3,10 @@
 import os
 import logging
 from lib import (
-    read_bytes,
-    constant_pool,
     attributes,
+    constant_pool,
+    frame,
+    read_bytes,
     run_time_data,
     thread
 )
@@ -474,3 +475,7 @@ def load_class(classname: str) -> ClassStruct:
     run_time_data.method_area[classname] = class_struct
     exec_class_initialization_method(class_struct)
     return class_struct
+
+
+def init_class_object(klass, obj):
+    pass
