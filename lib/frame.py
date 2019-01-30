@@ -14,11 +14,24 @@ class Object(object):
         return f'Object of class {self.klass.name()}'
 
     def set_field(self, field_klass_name, field_type, field_name, field_value):
-        self.fields[(field_klass_name, tuple(field_type), field_name)] = \
+        self.fields[f'{field_type} {field_klass_name}.{field_name}'] = \
             field_value
 
+    def set_field_default(self, field_klass_name, field_type, field_name):
+        value = 0
+        if field_type == 'C':
+            value = ''
+        elif field_type == 'Z':
+            value = False
+        elif len(field_type) > 1 and field_type[0] == 'L':
+            # TODO: It's a reference, shoule init it, skip for now
+            value = None
+        elif len(field_type) > 1 and field_type[0] == '[':
+            value = []
+        self.fields[f'{field_type} {field_klass_name}.{field_name}'] = value
+
     def get_field(self, field_klass_name, field_type, field_name):
-        return self.fields[(field_klass_name, tuple(field_type), field_name)]
+        return self.fields[f'{field_type} {field_klass_name}.{field_name}']
 
 
 class _LocalVariables(list):

@@ -156,6 +156,6 @@ class TestAsAWholeProgramm(TestCase):
         )
         self.assertEqual(
             local_variable_index_4_values,
-            [2, 3, 4],
+            [2, 3, 4, 0],
             'Get and set static field wrong result.'
         )

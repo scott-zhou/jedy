@@ -48,6 +48,12 @@ class ClassStruct(object):
     def name(self):
         return self.constant_pool.get_constant_class_name(self.this_class)
 
+    def get_field(self, field):
+        return (
+            self.constant_pool[field.name_index].value(),
+            self.constant_pool[field.descriptor_index].value()
+        )
+
     def get_method(self, method_name, method_description):
         for method in self.methods:
             name_const = self.constant_pool[method.name_index]
@@ -478,4 +484,8 @@ def load_class(classname: str) -> ClassStruct:
 
 
 def init_class_object(klass, obj):
-    pass
+    while klass:
+        for field in klass.fields:
+            name, descriptor = klass.get_field(field)
+            obj.set_field_default(klass.name(), descriptor, name)
+        klass = klass.get_super_class()

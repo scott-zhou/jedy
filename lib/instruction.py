@@ -705,7 +705,6 @@ class getfield(_instruction):
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
-        field = descriptor.parse_field_descriptor(field)
 
         obj = frame.operand_stack.pop()
         value = obj.get_field(class_name, field, name)
@@ -738,7 +737,6 @@ class putfield(_instruction):
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
-        field = descriptor.parse_field_descriptor(field)
 
         value = frame.operand_stack.pop()
         obj = frame.operand_stack.pop()
