@@ -32,3 +32,8 @@ def java_lang_object_registerNatives(stack):
 @native_method('java/lang/Object', 'getClass', '()Ljava/lang/Class;')
 def java_lang_object_getClass(stack):
     stack.append(None)
+
+
+@native_method('java/lang/System', 'registerNatives', '()V')
+def java_lang_system_registerNatives(stack):
+    pass

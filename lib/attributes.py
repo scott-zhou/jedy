@@ -68,7 +68,11 @@ class CodeAttribute(Attribute):
         while pos < self.code_length:
             opcode = self.code[pos]
             if opcode not in instruction.OPCODES:
-                logging.warning('Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(opcode, pos=pos))
+                logging.warning(
+                    'Not recognized instruction 0x{:02X} at pos {pos}, ignore the following parts in code.'.format(
+                        opcode, pos=pos
+                    )
+                )
                 break
             inst = instruction.OPCODES[opcode](pos)
             operands_start = pos + 1
@@ -90,7 +94,8 @@ class CodeAttribute(Attribute):
             end_pc = read_bytes.read_u2_int(fd)
             handler_pc = read_bytes.read_u2_int(fd)
             catch_type = read_bytes.read_u2_int(fd)
-            self.exception_table.append(tuple(start_pc, end_pc, handler_pc, catch_type))
+            self.exception_table.append(
+                (start_pc, end_pc, handler_pc, catch_type))
         (self.attributes_count, self.attributes) = parse(fd, class_file)
         self.code_to_instructions()
 

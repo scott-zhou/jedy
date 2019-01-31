@@ -77,6 +77,17 @@ class _instruction(object):
         raise NotImplementedError('execute in base instruction is not implemented, instruction {name}'.format(name=self.class_name_and_address()))
 
 
+@bytecode(0x01)
+class aconst_null(_instruction):
+    def execute(self, frame):
+        frame.operand_stack.append(None)
+        logging.debug(
+            f'Instruction {self.class_name_and_address()}: '
+            f'push null onto operand stack\n'
+            f'\t{frame.operand_debug_str()}'
+        )
+
+
 class iconst_i(_instruction):
     def __init__(self, address, i=0):
         super().__init__(address)
@@ -157,6 +168,31 @@ class sipush(iconst_i):
     def put_operands(self, operand_bytes):
         assert len(operand_bytes) == 2
         self.i = int.from_bytes(operand_bytes, byteorder='big', signed=False)
+
+
+@bytecode(0x12)
+class ldc(_instruction):
+    def len_of_operand(self):
+        return 1
+
+    def put_operands(self, operand_bytes):
+        assert type(operand_bytes[0]) is int
+        self.index = operand_bytes[0]
+
+    def execute(self, frame):
+        constant = frame.klass.constant_pool[self.index]
+        if type(constant) is constant_pool.ConstantString:
+            frame.operand_stack.append(
+                frame.klass.constant_pool[constant.string_index].value())
+        elif type(constant) in (
+            constant_pool.ConstantInteger,
+            constant_pool.ConstantFloat
+        ):
+            frame.operand_stack.append(constant.value)
+        else:
+            assert False, \
+                f'constant type is {type(constant)}, '\
+                'not know what is used for yet'
 
 
 class iload_n(_instruction):
@@ -647,6 +683,8 @@ class getstatic(_instruction):
         field_ref = frame.klass.constant_pool[self.index]
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
+        assert run_time_data.method_area[class_name],\
+            f'Can\'t load class {class_name}'
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
         value = run_time_data.class_static_fields[class_name][(name, field)]
         logging.debug(
@@ -674,6 +712,8 @@ class putstatic(_instruction):
         field_ref = frame.klass.constant_pool[self.index]
         assert type(field_ref) is constant_pool.ConstantFieldref
         class_name = field_ref.get_class(frame.klass.constant_pool)
+        assert run_time_data.method_area[class_name],\
+            f'Can\'t load class {class_name}'
         name, field = field_ref.get_name_descriptor(frame.klass.constant_pool)
         value = frame.operand_stack.pop()
         logging.debug(
@@ -842,6 +882,8 @@ class invokestatic(_instruction):
             )
         )
         klass = run_time_data.method_area[class_name]
+        assert klass, f'Can\'t load class {class_name}'
+
         method = klass.get_method(method_name, method_describ)
         if method.access_flags.native():
             fake_method = get_native_method(
@@ -850,7 +892,9 @@ class invokestatic(_instruction):
                 fake_method(frame.operand_stack)
                 return
             else:
-                assert False, 'Not support native method yet.'
+                assert False, \
+                    'Not support native method yet: '\
+                    f'{class_name}.{method_name}, descriptor {method_describ}'
         assert not method.access_flags.synchronized(),\
             'Not support synchronized method yet.'
         self.invoke_method = True
