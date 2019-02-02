@@ -37,3 +37,13 @@ def java_lang_object_getClass(stack):
 @native_method('java/lang/System', 'registerNatives', '()V')
 def java_lang_system_registerNatives(stack):
     pass
+
+
+@native_method('java/io/FileDescriptor', 'initIDs', '()V')
+def java_io_filedescriptor_initIds(stack):
+    pass
+
+
+@native_method('sun/misc/Unsafe', 'registerNatives', '()V')
+def sun_misc_unsafe_registerNatives(stack):
+    pass

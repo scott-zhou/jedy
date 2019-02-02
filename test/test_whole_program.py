@@ -7,12 +7,12 @@ from lib import (
 )
 
 
-class TestAsAWholeProgramm(TestCase):
+class TestAsAWholeProgram(TestCase):
     def setUp(self):
         class_loader.jrelibpath = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             '..',
-            'jre',
+            'openjdk_jre',
             'lib'
         )
 
