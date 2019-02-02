@@ -1,5 +1,5 @@
-'''We can't use the Oracle JVM native implementation, it's
-integrated with it's JVM progress. So we provide own fake
+'''We can't use the JVM native implementation, it's
+integrated with it's JVM progress. So we provide hijacked
 implementation in this file.
 '''
 
