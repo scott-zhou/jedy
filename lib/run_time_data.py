@@ -17,8 +17,6 @@ class MethodAreaDict(dict):
         if klass_name not in self:
             class_struct = class_loader.load_class(klass_name)
             assert class_struct, f'Load class {klass_name} fail.'
-
-            class_struct.debug_info()
         return super().__getitem__(klass_name)
 
 

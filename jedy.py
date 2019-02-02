@@ -56,7 +56,6 @@ if __name__ == "__main__":
     logging.debug(
         f'Loading class {args.classname} from path {class_loader.classpath}')
     class_struct = class_loader.load_class(args.classname)
-    class_struct.debug_info()
     main_thread = thread.Thread(
         args.classname, 'main', '([Ljava/lang/String;)V', [''])
     run_time_data.thread_pool.append(main_thread)

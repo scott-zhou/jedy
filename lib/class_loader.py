@@ -5,14 +5,13 @@ import logging
 from lib import (
     attributes,
     constant_pool,
-    frame,
     read_bytes,
     run_time_data,
     thread
 )
 
 classpath = './'
-jrelibpath = './jre/lib'
+jrelibpath = './openjdk_jre/lib'
 java_home = ''
 java_library_path = ''
 printclass = False
@@ -474,11 +473,14 @@ def load_class(classname: str) -> ClassStruct:
             os.path.isfile(os.path.join(jrelibpath, filename)) else
             None)
     if not possible_path:
+        logging.warning(f'Try path {os.path.join(classpath, filename)}.')
+        logging.warning(f'Try path {os.path.join(jrelibpath, filename)}.')
         logging.warning(f'Can not find {classname} class file.')
         return None
 
     class_struct = parse(possible_path)
     run_time_data.method_area[classname] = class_struct
+    class_struct.debug_info()
     exec_class_initialization_method(class_struct)
     return class_struct
 
