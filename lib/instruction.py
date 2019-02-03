@@ -4,7 +4,7 @@ from lib import constant_pool
 from lib import run_time_data
 from lib import descriptor
 from lib import frame as FRAME
-from lib.hijack_jre_native_methods import get_native_method
+from lib.hijack_jre_methods import get_native_method
 from lib import class_loader
 
 OPCODES = {}

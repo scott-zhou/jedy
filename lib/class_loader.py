@@ -9,6 +9,7 @@ from lib import (
     run_time_data,
     thread
 )
+from lib.hijack_jre_methods import get_jdk_method
 
 classpath = './'
 jrelibpath = './openjdk_jre/lib'
@@ -451,13 +452,17 @@ def exec_class_initialization_method(class_struct: ClassStruct) -> None:
         # class initialization method is already exectued, it shoule only
         # be executed once
         return
+    run_time_data.class_static_fields[class_name]
     method_name, method_description = '<clinit>', '()V'
-    if not class_struct.get_method(method_name, method_description):
-        # no class initialization method
-        return
-    init_thread = thread.Thread(
-        class_name, method_name, method_description, [])
-    init_thread.run()
+    hijacked_method = get_jdk_method(
+        class_name, method_name, method_description)
+    if hijacked_method:
+        hijacked_method(None)
+    elif class_struct.get_method(method_name, method_description):
+        init_thread = thread.Thread(
+            class_name, method_name, method_description, [])
+        init_thread.run()
+    # can be no class initialization method
 
 
 def load_class(classname: str) -> ClassStruct:
