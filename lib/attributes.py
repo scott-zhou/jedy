@@ -34,7 +34,9 @@ def parse_attr(fd, class_file):
         'Code': CodeAttribute,
         'StackMapTable': StackMapTableAttribute,
         'Exceptions': ExceptionsAttribute,
-        'BootstrapMethods': BootstrapMethodsAttribute
+        'BootstrapMethods': BootstrapMethodsAttribute,
+        'LineNumberTable': LineNumberTableAttribute,
+        'SourceFile': SourceFileAttribute,
     }.get(name_constant.value(), Attribute)
     attr = attribute_type(name_constant.value(), length)
     attr.parse_info(fd, class_file)
@@ -58,7 +60,8 @@ class Attribute(object):
 
 
 class ConstantValueAttribute(Attribute):
-    pass
+    def parse_info(self, fd, class_file):
+        self.constantvalue_index = read_bytes.read_u2_int(fd)
 
 
 class CodeAttribute(Attribute):
@@ -75,12 +78,9 @@ class CodeAttribute(Attribute):
                 )
                 break
             inst = instruction.OPCODES[opcode](pos)
-            operands_start = pos + 1
-            operands_end = operands_start + inst.len_of_operand()
-            operands = bytes(self.code[operands_start:operands_end])
-            inst.put_operands(operands)
-            self.instructions[pos] = inst
-            pos = operands_end
+            pos = inst.decode(self.code)
+            inst.next_pc = pos
+            self.instructions[inst.address] = inst
 
     def parse_info(self, fd, class_file):
         self.max_stack = read_bytes.read_u2_int(fd)
@@ -99,6 +99,16 @@ class CodeAttribute(Attribute):
         (self.attributes_count, self.attributes) = parse(fd, class_file)
         self.code_to_instructions()
 
+    def line_number(self, pc):
+        '''Source line number of the instruction at pc, -1 if unknown'''
+        line, line_start_pc = -1, -1
+        for attr in self.attributes:
+            if type(attr) is LineNumberTableAttribute:
+                for start_pc, line_number in attr.line_number_table:
+                    if line_start_pc < start_pc <= pc:
+                        line, line_start_pc = line_number, start_pc
+        return line
+
     def debug_info(self, prefix=''):
         super().debug_info(prefix)
         logging.debug(prefix + 'max stack:' + str(self.max_stack))
@@ -108,6 +118,22 @@ class CodeAttribute(Attribute):
         logging.debug(prefix + 'attribute count:' + str(self.attributes_count))
         for attr in self.attributes:
             attr.debug_info(prefix + '       - ')
+
+
+class LineNumberTableAttribute(Attribute):
+    def parse_info(self, fd, class_file):
+        length = read_bytes.read_u2_int(fd)
+        self.line_number_table = []
+        for _ in range(length):
+            start_pc = read_bytes.read_u2_int(fd)
+            line_number = read_bytes.read_u2_int(fd)
+            self.line_number_table.append((start_pc, line_number))
+
+
+class SourceFileAttribute(Attribute):
+    def parse_info(self, fd, class_file):
+        self.source_file = class_file.constant_pool[
+            read_bytes.read_u2_int(fd)].value()
 
 
 class StackMapTableAttribute(Attribute):

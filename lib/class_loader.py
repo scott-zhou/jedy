@@ -5,9 +5,10 @@ import logging
 from lib import (
     attributes,
     constant_pool,
+    descriptor,
+    frame,
     read_bytes,
-    run_time_data,
-    thread
+    run_time_data
 )
 from lib.hijack_jre_methods import get_jdk_method
 
@@ -44,9 +45,20 @@ class ClassStruct(object):
         self.methods = []
         self.attributes_count = 0
         self.attributes = []
+        self._name = None
+        self._super_klass = None
+        self.methods_dict = {}
+        self.selected_methods = {}
+        self.subclass_cache = {}
+        # Class initialization state: None means not initialized
+        # 'initializing' or 'initialized'
+        self.init_state = None
 
     def name(self):
-        return self.constant_pool.get_constant_class_name(self.this_class)
+        if self._name is None:
+            self._name = self.constant_pool.get_constant_class_name(
+                self.this_class)
+        return self._name
 
     def get_field(self, field):
         return (
@@ -54,33 +66,36 @@ class ClassStruct(object):
             self.constant_pool[field.descriptor_index].value()
         )
 
-    def get_method(self, method_name, method_description):
-        for method in self.methods:
-            name_const = self.constant_pool[method.name_index]
-            assert type(name_const) is constant_pool.ConstantUtf8,\
-                f'Method {method_name} name_index in constant_pool is'\
-                ' not CONSTANT_Utf8_info'
-            name = name_const.value()
-            descriptor = method.descriptor
-            if name == method_name and descriptor == method_description:
-                return method
+    def has_field(self, field_name, field_descriptor):
+        for field in self.fields:
+            if self.get_field(field) == (field_name, field_descriptor):
+                return True
+        return False
+
+    def field_resolution(self, field_name, field_descriptor):
+        '''Field resolution according JVM spec 5.4.3.2, return the class
+        which declares the field.
+        '''
+        if self.has_field(field_name, field_descriptor):
+            return self
+        for interface in self.superinterfaces():
+            klass = interface.field_resolution(field_name, field_descriptor)
+            if klass:
+                return klass
+        super_class = self.get_super_class()
+        if super_class:
+            return super_class.field_resolution(field_name, field_descriptor)
         return None
+
+    def get_method(self, method_name, method_description):
+        return self.methods_dict.get((method_name, method_description))
 
     def method_resolution(self, method_name, method_description):
         klass = self
-        while True:
-            if not klass:
-                return None, None
-            for method in klass.methods:
-                name_const = klass.constant_pool[method.name_index]
-                assert type(name_const) is constant_pool.ConstantUtf8,\
-                    f'Method {method_name} name_index in constant_pool is'\
-                    ' not CONSTANT_Utf8_info'
-                name = name_const.value()
-                descriptor = method.descriptor
-                if name == method_name and descriptor == method_description:
-                    # Method resolved, return
-                    return klass, method
+        while klass:
+            method = klass.get_method(method_name, method_description)
+            if method:
+                return klass, method
             klass = klass.get_super_class()
         return None, None
 
@@ -90,19 +105,41 @@ class ClassStruct(object):
         )
         if resolved_class and resolved_method:
             return resolved_class, resolved_method
-        counter = 0
-        klass, method = None, None
-        for interface in self.superinterfaces():
-            klass = interface
-            method = interface.get_method(method_name, method_description)
-            if method:
-                counter += 1
-        if counter == 0:
-            assert False, f'Method {method_name} not found implementation.'
-        elif counter != 1:
-            assert False, \
-                f'Found {counter} {method_name} in superinterfaces.'
-        return klass, method
+        return self.superinterface_method(method_name, method_description)
+
+    def superinterface_method(self, method_name, method_description):
+        '''Find method in all superinterfaces, prefer the non abstract one
+        (default method).
+        '''
+        found = None
+        klass = self
+        while klass:
+            for interface in klass.all_superinterfaces():
+                method = interface.get_method(method_name, method_description)
+                if method and not method.access_flags.static() and \
+                        not method.access_flags.private():
+                    if not method.access_flags.abstract():
+                        return interface, method
+                    if not found:
+                        found = (interface, method)
+            klass = klass.get_super_class()
+        return found if found else (None, None)
+
+    def select_method(self, method_name, method_description):
+        '''Method selection for invokevirtual and invokeinterface, according
+        the runtime class of the object.
+        '''
+        key = (method_name, method_description)
+        if key not in self.selected_methods:
+            klass, method = self.method_resolution(
+                method_name, method_description)
+            if not method or method.access_flags.abstract():
+                default_klass, default_method = self.superinterface_method(
+                    method_name, method_description)
+                if default_method:
+                    klass, method = default_klass, default_method
+            self.selected_methods[key] = (klass, method)
+        return self.selected_methods[key]
 
     def method_name(self, method):
         return self.constant_pool[method.name_index].value()
@@ -111,15 +148,88 @@ class ClassStruct(object):
         if self.super_class == 0:
             # No super class
             return None
-        return run_time_data.method_area[
-            self.constant_pool.get_constant_class_name(self.super_class)
-        ]
+        if self._super_klass is None:
+            self._super_klass = run_time_data.method_area[
+                self.constant_pool.get_constant_class_name(self.super_class)
+            ]
+        return self._super_klass
 
     def superinterfaces(self):
         for i in self.interfaces:
             yield run_time_data.method_area[
                 self.constant_pool.get_constant_class_name(i)
             ]
+
+    def all_superinterfaces(self):
+        for interface in self.superinterfaces():
+            yield interface
+            yield from interface.all_superinterfaces()
+
+    def is_interface(self):
+        return self.access_flags.interface()
+
+    def is_subclass_of(self, class_name):
+        '''Return True if this class is the class `class_name`, or a
+        subclass of it, or implements it.
+        '''
+        if class_name not in self.subclass_cache:
+            result = False
+            if self.name() == class_name:
+                result = True
+            else:
+                super_class = self.get_super_class()
+                if super_class and super_class.is_subclass_of(class_name):
+                    result = True
+                else:
+                    for interface in self.superinterfaces():
+                        if interface.is_subclass_of(class_name):
+                            result = True
+                            break
+            self.subclass_cache[class_name] = result
+        return self.subclass_cache[class_name]
+
+    def prepare(self):
+        '''Preparation, create static fields and initialize them to default
+        values, or the ConstantValue attribute.
+        '''
+        static_fields = run_time_data.class_static_fields[self.name()]
+        for field in self.fields:
+            if not field.access_flags.static():
+                continue
+            name, descriptor = self.get_field(field)
+            value = frame.default_value(descriptor)
+            for attr in field.attributes:
+                if type(attr) is attributes.ConstantValueAttribute:
+                    constant = self.constant_pool[attr.constantvalue_index]
+                    if type(constant) is constant_pool.ConstantString:
+                        value = run_time_data.java_string(
+                            self.constant_pool[constant.string_index].value())
+                    else:
+                        value = constant.value
+            static_fields[(name, descriptor)] = value
+
+    def instance_field_defaults(self):
+        '''All instance fields of this class and super classes with default
+        values, as {(declaring class name, field name): value}.
+        '''
+        if not hasattr(self, '_instance_field_defaults'):
+            defaults = {}
+            super_class = self.get_super_class()
+            if super_class:
+                defaults.update(super_class.instance_field_defaults())
+            for field in self.fields:
+                if field.access_flags.static():
+                    continue
+                name, field_descriptor = self.get_field(field)
+                defaults[(self.name(), name)] = frame.default_value(field_descriptor)
+            self._instance_field_defaults = defaults
+        return self._instance_field_defaults
+
+    def source_file(self):
+        for attr in self.attributes:
+            if type(attr) is attributes.SourceFileAttribute:
+                return attr.source_file
+        return None
 
     def validate(self):
         '''Valid if class struct according to spec
@@ -202,6 +312,8 @@ class BootstrapClassLoader(object):
             method = Method()
             method.parse(fd, class_struct)
             class_struct.methods.append(method)
+            class_struct.methods_dict[
+                (method.method_name.value(), method.descriptor)] = method
         (class_struct.attributes_count, class_struct.attributes) =\
             attributes.parse(fd, class_struct)
         assert len(fd.read(1)) == 0,\
@@ -399,19 +511,24 @@ class Method(object):
         self.name = f'{class_name}.{method_name.value()}'
         self.descriptor =\
             class_file.constant_pool[self.descriptor_index].value()
-        logging.debug(f'Method {self.name} loaded, code is:')
-        for attr in self.attributes:
-            if type(attr) is attributes.CodeAttribute:
-                # Only one code attribute in Method
-                logging.debug(' - ' + ' '.join('0x{:02X}'.format(i) for i in attr.code))
-                break
+        self.parameter_types, return_type = \
+            descriptor.parse_method_descriptor(self.descriptor)
+        self.return_type = return_type[0]
+        self.arg_slots = sum(
+            2 if t in ('J', 'D') else 1 for t in self.parameter_types)
+        if not self.access_flags.static():
+            self.arg_slots += 1
+        self._code = False
 
     def code(self):
-        for attr in self.attributes:
-            if type(attr) is attributes.CodeAttribute:
-                # Only one code attribute in Method
-                return attr
-        return None
+        if self._code is False:
+            self._code = None
+            for attr in self.attributes:
+                if type(attr) is attributes.CodeAttribute:
+                    # Only one code attribute in Method
+                    self._code = attr
+                    break
+        return self._code
 
     def debug_info(self, class_struct):
         name = class_struct.constant_pool[self.name_index].value()
@@ -431,7 +548,7 @@ class Method(object):
             attr.debug_info('       -       - ')
 
     def isSignaturePolymorphic(self):
-        return self.class_name == 'java.lang.invoke.MethodHandle' and \
+        return self.class_name == 'java/lang/invoke/MethodHandle' and \
             self.descriptor == '([Ljava/lang/Object;)Ljava/lang/Object;' and \
             self.access_flags.varargs() and\
             self.access_flags.native()
@@ -444,55 +561,62 @@ def parse(file_name: str, loader=BootstrapClassLoader):
     return class_struct
 
 
-def exec_class_initialization_method(class_struct: ClassStruct) -> None:
-    '''Invoke class or interface initialization method
+def initialize_class(class_struct: ClassStruct, current_thread) -> None:
+    '''Class initialization according JVM spec 5.5, invoke class or
+    interface initialization method. Single thread only.
     '''
-    class_name = class_struct.name()
-    if class_name in run_time_data.class_static_fields:
-        # class initialization method is already exectued, it shoule only
-        # be executed once
+    if class_struct.init_state is not None:
+        # Initialized, or being initialized by current thread
         return
-    run_time_data.class_static_fields[class_name]
+    class_struct.init_state = 'initializing'
+    if not class_struct.is_interface():
+        super_class = class_struct.get_super_class()
+        if super_class:
+            initialize_class(super_class, current_thread)
+    class_name = class_struct.name()
     method_name, method_description = '<clinit>', '()V'
     hijacked_method = get_jdk_method(
         class_name, method_name, method_description)
     if hijacked_method:
-        hijacked_method(None)
-    elif class_struct.get_method(method_name, method_description):
-        init_thread = thread.Thread(
-            class_name, method_name, method_description, [])
-        init_thread.run()
+        hijacked_method(current_thread, [])
+    else:
+        method = class_struct.get_method(method_name, method_description)
+        if method:
+            logging.debug(f'Initialize class {class_name}')
+            current_thread.invoke(class_struct, method, [])
     # can be no class initialization method
+    class_struct.init_state = 'initialized'
+
+
+def find_class_file(classname: str):
+    filename = classname + '.class'
+    # First try class path, then try jre lib path
+    for path in (classpath, jrelibpath):
+        if path and os.path.isfile(os.path.join(path, filename)):
+            return os.path.join(path, filename)
+    return None
 
 
 def load_class(classname: str) -> ClassStruct:
-    """
+    """Load and link the class, but not initialize it. The class is loaded
+    again if it's already in method area.
     :param classname: str, represent the name of class
     :return: ClassStruct object if the class is success loaded, otherwise None
     """
-    filename = classname + '.class'
-    # First try class path, then try jre lib path
-    possible_path = os.path.join(classpath, filename) if \
-        os.path.isfile(os.path.join(classpath, filename)) else \
-        (os.path.join(jrelibpath, filename) if
-            os.path.isfile(os.path.join(jrelibpath, filename)) else
-            None)
+    possible_path = find_class_file(classname)
     if not possible_path:
-        logging.warning(f'Try path {os.path.join(classpath, filename)}.')
-        logging.warning(f'Try path {os.path.join(jrelibpath, filename)}.')
         logging.warning(f'Can not find {classname} class file.')
         return None
 
+    logging.debug(f'Load class {classname} from {possible_path}')
     class_struct = parse(possible_path)
     run_time_data.method_area[classname] = class_struct
     class_struct.debug_info()
-    exec_class_initialization_method(class_struct)
+    class_struct.prepare()
     return class_struct
 
 
 def init_class_object(klass, obj):
-    while klass:
-        for field in klass.fields:
-            name, descriptor = klass.get_field(field)
-            obj.set_field_default(klass.name(), descriptor, name)
-        klass = klass.get_super_class()
+    fields = obj.fields
+    for key, value in klass.instance_field_defaults().items():
+        fields[key] = value

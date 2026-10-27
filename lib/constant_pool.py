@@ -48,17 +48,23 @@ def parse(fd):
     '''
     count = read_bytes.read_u2_int(fd)
     pool = ConstantPool(count)
-    long_or_double = False
-    for _ in range(count - 1):
-        constant = parse_entry(fd, long_or_double)
-        long_or_double = type(constant) in (ConstantLong, ConstantDouble)
+    index = 1
+    while index < count:
+        constant = parse_entry(fd)
         pool.append(constant)
+        index += 1
+        if type(constant) in (ConstantLong, ConstantDouble):
+            # 8-byte constants take up two entries in the constant_pool
+            # table, the following entry is valid but unusable.
+            unusable = GenericConstant(0)
+            unusable.unuse()
+            pool.append(unusable)
+            index += 1
     return pool
 
 
-def parse_entry(fd, prev_long_or_double):
-    '''Parse one constant in constant_pool. Set constant be unusable
-    if previous constant is long or double.
+def parse_entry(fd):
+    '''Parse one constant in constant_pool.
     '''
     tag = read_bytes.read_u1_int(fd)
     constant_type = constant_type_tag_to_class.get(tag, None)
@@ -68,8 +74,6 @@ def parse_entry(fd, prev_long_or_double):
         )
     constant = constant_type()
     constant.parse(fd)
-    if prev_long_or_double:
-        constant.unuse()
     return constant
 
 
@@ -220,7 +224,7 @@ class ConstantInteger(GenericConstant):
         super().__init__(CONSTANT_Integer)
 
     def parse(self, fd):
-        self.value = read_bytes.read_u4_int(fd)
+        self.value = read_bytes.read_s4_int(fd)
         # In spec it's bytes, use veriable name __value.
 
     def debug_info(self, prefix, class_struct):
@@ -259,7 +263,7 @@ class ConstantLong(GenericConstant):
         super().__init__(CONSTANT_Long)
 
     def parse(self, fd):
-        self.value = read_bytes.read_u8_int(fd)
+        self.value = read_bytes.read_s8_int(fd)
 
     def debug_info(self, prefix, class_struct):
         logging.debug(
@@ -278,7 +282,7 @@ class ConstantDouble(GenericConstant):
         super().__init__(CONSTANT_Double)
 
     def parse(self, fd):
-        self.value = read_bytes.read_u8_float(fd)
+        self.value = read_bytes.read_u8_double(fd)
 
     def debug_info(self, prefix, class_struct):
         logging.debug(
@@ -325,7 +329,7 @@ class ConstantUtf8(GenericConstant):
 
     def parse(self, fd):
         length = read_bytes.read_u2_int(fd)
-        self.str_value = read_bytes.read_string(fd, length)
+        self.str_value = read_bytes.read_modified_utf8(fd, length)
 
     def value(self):
         return self.str_value
