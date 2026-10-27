@@ -20,8 +20,8 @@ def parse_field_descriptor(field, void=False):
     ]
     object_pattern = object_type[0][0]
     array_type = [
-        ('\[+' + base_pattern, 'base type array reference'),
-        ('\[+' + object_pattern, 'object type array reference'),
+        (r'\[+' + base_pattern, 'base type array reference'),
+        (r'\[+' + object_pattern, 'object type array reference'),
     ]
     array_pattern = '|'.join(t for t, _ in array_type)
     field_pattern = '|'.join([base_pattern, object_pattern, array_pattern])
@@ -31,7 +31,7 @@ def parse_field_descriptor(field, void=False):
 
 
 def parse_method_descriptor(method_d):
-    pattern = re.compile('\(.*?\)|.+')
+    pattern = re.compile(r'\(.*?\)|.+')
     parts = pattern.findall(method_d)
     assert len(parts) == 2, 'Invalid method descriptor {d}'.format(d=method_d)
     assert parts[0][0] == '(', 'Invalid method descriptor {d}'.format(d=method_d)
